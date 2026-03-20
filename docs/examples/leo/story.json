@@ -1,0 +1,28 @@
+{
+    "title": "Léo et sa voiture rouge",
+    "constants": {
+        "style": "Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive characters",
+        "recurring_concepts": {
+            "<LEO>": "A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.",
+            "<TOY_CAR>": "A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.",
+            "<LIVING_ROOM>": "A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight."
+        }
+    },
+    "scenes": [
+        {
+            "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge qu'il ne quitte jamais. Ce matin-là, impossible de la trouver. Il cherche partout, soulève les coussins, regarde derrière les rideaux… jusqu'à ce qu'il l'aperçoive, cachée sous le canapé du salon. Son visage s'illumine quand il la récupère enfin.",
+            "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>, after searching everywhere, smiling with relief as he pulls his <TOY_CAR> from under the sofa.",
+            "image_path": "illustrations/scene-001.png"
+        },
+        {
+            "text": "Tout content, il file dans sa chambre pour jouer. Il fait rouler son bolide sur le parquet, invente des circuits autour des pieds de chaise et le long des bords du tapis. Les heures passent sans qu'il s'en rende compte.",
+            "prompt": "<LEO> plays in his bedroom, guiding his <TOY_CAR> across the parquet floor around chair legs and along the edge of a rug.",
+            "image_path": "illustrations/scene-002.png"
+        },
+        {
+            "text": "Quand la faim se fait sentir, Léo retourne au salon. Sa maman lui a préparé de bons gâteaux pour le goûter. Assis près d'elle, il les dévore avec appétit, sa petite voiture rouge serrée dans la main.",
+            "prompt": "<LEO> sits in the <LIVING_ROOM> at snack time, eating little cakes with appetite while holding his <TOY_CAR> tightly in one hand.",
+            "image_path": "illustrations/scene-003.png"
+        }
+    ]
+}
