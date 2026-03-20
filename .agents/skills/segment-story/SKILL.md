@@ -43,6 +43,8 @@ The art style must be defined once in the dedicated `style` field of the output.
 
 Tags allow to factorise the description of recurring concepts. They must be defined once in the `recurring_concepts` field of the output, and then represented as anchors in the scene illustrations. The anchors will be replaced by their corresponding description (the tag value) when generating the illustrated book.
 
+The `constraints` field should be left empty by default. Default generation constraints (such as "single scene", "no visible text", "no frame or border") are applied automatically by the illustration generation pipeline. Only populate this field when the user explicitly requests additional or different constraints, or when the story imposes specific generation constraints not covered by the defaults.
+
 The tags defined should be the following:
 
 * `<[CONCEPT_NAME]>`: Detailed description of the corresponding concept (character, environment, object, etc.). Make sure environments are described generally enough to accommodate different rooms or angles if needed, while keeping a consistent aesthetic.
@@ -83,14 +85,14 @@ The output must be a valid JSON object with exactly the following structure:
 
 {
   "title": "Story title",
-  "constants": {
-    "style": "Artistic style in English",
-    "recurring_concepts": {
-      "<CONCEPT_NAME>": "Detailed concept description"
-    }
+  "style": "Artistic style in English",
+  "constraints": "",
+  "recurring_concepts": {
+    "<CONCEPT_NAME>": "Detailed concept description"
   },
   "scenes": [
     {
+      "index": 1,
       "text": "Scene text in the language of the story",
       "prompt": "Scene illustration prompt in English",
       "image_path": ""
@@ -105,14 +107,17 @@ Before returning the final answer, perform the following checks:
 * The top-level value is a JSON object.
 * The object contains exactly these top-level keys:
   * `title`
-  * `constants`
+  * `style`
+  * `constraints`
+  * `recurring_concepts`
   * `scenes`
 * `title` is a string.
-* `constants` is an object containing:
-  * `style`, which must be a string,
-  * `recurring_concepts`, which must be an object mapping tag names to string descriptions.
+* `style` is a string describing the artistic style in English.
+* `constraints` is a string. It should be empty (`""`) unless the user or story requires specific constraints.
+* `recurring_concepts` is an object mapping tag names to string descriptions.
 * `scenes` is an array.
 * Each element of `scenes` is an object containing exactly:
+  * `index`, an integer (1-based position of the scene),
   * `text`, a string,
   * `prompt`, a string,
   * `image_path`, a string.
@@ -138,26 +143,28 @@ Below is a complete example of how to process an input story into the expected J
 
 {
   "title": "Léo et sa voiture rouge",
-  "constants": {
-    "style": "Children's watercolor illustration, soft strokes, pastel colors, warm and natural lighting",
-    "recurring_concepts": {
-      "<LEO>": "5-year old male toddler wearing beige sports pants and a plain white t-shirt. He has very short black hair, brown eyes, fair skin with some freckles on his cheeks.",
-      "<TOY_CAR>": "Small bright red toy sports car with black wheels and a white racing stripe.",
-      "<HOUSE>": "Cozy suburban house interior, featuring warm oak wood floors, white walls with pastel yellow accents, and large windows letting in natural sunlight."
-    }
+  "style": "Children's watercolor illustration, soft strokes, pastel colors, warm and natural lighting",
+  "constraints": "",
+  "recurring_concepts": {
+    "<LEO>": "5-year old male toddler wearing beige sports pants and a plain white t-shirt. He has very short black hair, brown eyes, fair skin with some freckles on his cheeks.",
+    "<TOY_CAR>": "Small bright red toy sports car with black wheels and a white racing stripe.",
+    "<HOUSE>": "Cozy suburban house interior, featuring warm oak wood floors, white walls with pastel yellow accents, and large windows letting in natural sunlight."
   },
   "scenes": [
     {
+      "index": 1,
       "text": "Le matin, Léo cherchait son jouet préféré dans le salon lumineux de sa maison. Il finit par trouver sa petite voiture rouge sous le canapé.",
       "prompt": "<LEO> is kneeling on the floor of the <HOUSE> living room, happily pulling a <TOY_CAR> from under a comfortable sofa.",
       "image_path": ""
     },
     {
+      "index": 2,
       "text": "Ravi, le petit garçon courut dehors. Il passa des heures à faire rouler son bolide dans l'herbe haute du jardin sous un grand soleil.",
       "prompt": "<LEO> is playing outside in a bright sunny garden with tall green grass, enthusiastically pushing his <TOY_CAR> on the ground.",
       "image_path": ""
     },
     {
+      "index": 3,
       "text": "Quand l'heure du goûter arriva, Léo rentra dans la cuisine. Assis à la grande table en bois, il dévora ses biscuits.",
       "prompt": "<LEO> is sitting at a large wooden table in the kitchen of the <HOUSE>, happily eating cookies.",
       "image_path": ""

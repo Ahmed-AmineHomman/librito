@@ -7,11 +7,10 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from librito.models import StoryConstants, StoryScene, Storybook
+from librito.models import StoryScene, Storybook
 
-_TOP_LEVEL_KEYS = {"title", "constants", "scenes"}
-_CONSTANT_KEYS = {"style", "recurring_concepts"}
-_SCENE_KEYS = {"text", "prompt", "image_path"}
+_TOP_LEVEL_KEYS = {"title", "style", "constraints", "recurring_concepts", "scenes"}
+_SCENE_KEYS = {"index", "text", "prompt", "image_path"}
 
 
 def load_storybook(path: Path) -> Storybook:
@@ -36,44 +35,42 @@ def load_storybook(path: Path) -> Storybook:
     payload = json.loads(path.read_text(encoding="utf-8"))
     _require_exact_keys(payload, _TOP_LEVEL_KEYS, "story")
 
-    constants_payload = payload["constants"]
-    if not isinstance(constants_payload, dict):
-        raise ValueError("story.constants must be an object.")
+    recurring_concepts = payload["recurring_concepts"]
+    if not isinstance(recurring_concepts, dict):
+        raise ValueError("story.recurring_concepts must be an object.")
+
+    parsed_concepts: dict[str, str] = {}
+    for key, value in recurring_concepts.items():
+        if not isinstance(value, str):
+            raise ValueError(f"recurring_concepts.{key} must be a string.")
+        parsed_concepts[str(key)] = value
 
     scenes_payload = payload["scenes"]
     if not isinstance(scenes_payload, list):
         raise ValueError("story.scenes must be an array.")
 
-    _require_exact_keys(constants_payload, _CONSTANT_KEYS, "constants")
-    recurring_concepts = constants_payload["recurring_concepts"]
-    if not isinstance(recurring_concepts, dict):
-        raise ValueError("constants.recurring_concepts must be an object.")
-
-    parsed_concepts: dict[str, str] = {}
-    for key, value in recurring_concepts.items():
-        if not isinstance(value, str):
-            raise ValueError(f"constants.recurring_concepts.{key} must be a string.")
-        parsed_concepts[str(key)] = value
-
     scenes: list[StoryScene] = []
-    for index, scene_payload in enumerate(scenes_payload, start=1):
+    for position, scene_payload in enumerate(scenes_payload, start=1):
         if not isinstance(scene_payload, dict):
-            raise ValueError(f"scene {index} must be an object.")
-        _require_exact_keys(scene_payload, _SCENE_KEYS, f"scene {index}")
+            raise ValueError(f"scene {position} must be an object.")
+        _require_exact_keys(scene_payload, _SCENE_KEYS, f"scene {position}")
+        scene_index = scene_payload["index"]
+        if not isinstance(scene_index, int):
+            raise ValueError(f"scene {position}.index must be an integer.")
         scenes.append(
             StoryScene(
-                text=_require_string(scene_payload["text"], f"scene {index}.text"),
-                prompt=_require_string(scene_payload["prompt"], f"scene {index}.prompt"),
-                image_path=_require_string(scene_payload["image_path"], f"scene {index}.image_path"),
+                index=scene_index,
+                text=_require_string(scene_payload["text"], f"scene {position}.text"),
+                prompt=_require_string(scene_payload["prompt"], f"scene {position}.prompt"),
+                image_path=_require_string(scene_payload["image_path"], f"scene {position}.image_path"),
             )
         )
 
     return Storybook(
         title=_require_string(payload["title"], "story.title"),
-        constants=StoryConstants(
-            style=_require_string(constants_payload["style"], "constants.style"),
-            recurring_concepts=parsed_concepts,
-        ),
+        style=_require_string(payload["style"], "story.style"),
+        constraints=_require_string(payload["constraints"], "story.constraints"),
+        recurring_concepts=parsed_concepts,
         scenes=scenes,
     )
 

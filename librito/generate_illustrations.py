@@ -1,12 +1,10 @@
-"""Illustration generation entrypoint."""
+"""Illustration generation orchestration."""
 
 from __future__ import annotations
 
-import argparse
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from librito.gemini_client import GeminiImageClient, GeminiImageClientConfig
 from librito.prompt_builder import build_scene_prompt
@@ -77,7 +75,7 @@ def generate_story_illustrations(
             )
         )
 
-    for index, scene in enumerate(storybook.scenes, start=1):
+    for scene in storybook.scenes:
         if scene.image_path and (story_path.parent / scene.image_path).exists():
             continue
 
@@ -86,32 +84,7 @@ def generate_story_illustrations(
             scene,
         )
         generated_image = client.generate_image(prompt)
-        output_path = output_directory / f"scene-{index:03d}.png"
+        output_path = output_directory / f"scene-{scene.index:03d}.png"
         generated_image.save(output_path)
         scene.image_path = output_path.relative_to(story_path.parent).as_posix()
         save_storybook(storybook, story_path)
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the illustration generation module entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    parser = argparse.ArgumentParser(description="Generate illustrations for a segmented storybook.")
-    parser.add_argument("story_path", type=Path, help="Path to the story JSON file.")
-    arguments = parser.parse_args(argv)
-    generate_story_illustrations(arguments.story_path)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

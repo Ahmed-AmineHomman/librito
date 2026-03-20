@@ -50,20 +50,25 @@ def build_scene_prompt(
     Parameters
     ----------
     storybook:
-        Storybook containing the global style and recurring concepts.
+        Storybook containing the global style, constraints, and recurring
+        concepts.
     scene:
         Scene to render.
+
     Returns
     -------
     str
         Final prompt to send to the image generation API.
     """
 
-    expanded_prompt = expand_prompt_anchors(scene.prompt, storybook.constants.recurring_concepts).strip()
+    expanded_prompt = expand_prompt_anchors(scene.prompt, storybook.recurring_concepts).strip()
     template = _RESOURCE_DIRECTORY.joinpath("image_prompt_template.txt").read_text(encoding="utf-8")
-    constraints = _RESOURCE_DIRECTORY.joinpath("prompt_constraints.txt").read_text(encoding="utf-8").strip()
+    if storybook.constraints:
+        constraints = storybook.constraints.strip()
+    else:
+        constraints = _RESOURCE_DIRECTORY.joinpath("prompt_constraints.txt").read_text(encoding="utf-8").strip()
     return template.format(
-        style=storybook.constants.style.strip(),
+        style=storybook.style.strip(),
         scene_prompt=expanded_prompt,
         constraints=constraints,
     ).strip()

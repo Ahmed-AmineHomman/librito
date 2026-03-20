@@ -1,2 +1,3 @@
 single scene
 no visible text
+no frame or border

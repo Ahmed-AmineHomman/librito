@@ -2,24 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-
-@dataclass(slots=True)
-class StoryConstants:
-    """Visual constants shared by all story scenes.
-
-    Parameters
-    ----------
-    style:
-        Global visual style description written in English.
-    recurring_concepts:
-        Mapping from anchor tags such as ``<CALMIO>`` to their expanded
-        descriptions.
-    """
-
-    style: str
-    recurring_concepts: dict[str, str]
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
@@ -28,6 +11,8 @@ class StoryScene:
 
     Parameters
     ----------
+    index:
+        One-based position of the scene within the story.
     text:
         Reader-facing scene text.
     prompt:
@@ -36,6 +21,7 @@ class StoryScene:
         Relative path to the generated image within the story directory.
     """
 
+    index: int
     text: str
     prompt: str
     image_path: str
@@ -49,12 +35,20 @@ class Storybook:
     ----------
     title:
         Story title.
-    constants:
-        Shared visual constants used across all scenes.
+    style:
+        Global visual style description written in English.
+    constraints:
+        Optional generation constraints.  When empty, the default constraints
+        shipped in ``librito/resources/prompt_constraints.txt`` are used.
+    recurring_concepts:
+        Mapping from anchor tags such as ``<CALMIO>`` to their expanded
+        descriptions.
     scenes:
         Ordered story scenes to illustrate.
     """
 
     title: str
-    constants: StoryConstants
+    style: str
+    recurring_concepts: dict[str, str]
     scenes: list[StoryScene]
+    constraints: str = field(default="")
