@@ -1,0 +1,65 @@
+"""Tests for the Gemini SDK wrapper."""
+
+from __future__ import annotations
+
+import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from PIL import Image
+
+from librito.gemini_client import (
+    GeminiImageClient,
+    GeminiImageClientConfig,
+    GeminiImageClientError,
+)
+
+
+class GeminiImageClientTests(unittest.TestCase):
+    """Validate SDK-backed image generation."""
+
+    @patch("librito.gemini_client.types.ImageConfig")
+    @patch("librito.gemini_client.types.GenerateContentConfig")
+    @patch("librito.gemini_client.types.HttpOptions")
+    @patch("librito.gemini_client.genai.Client")
+    def test_generate_image_returns_first_inline_image(
+        self,
+        client_class: Mock,
+        http_options_class: Mock,
+        generate_content_config_class: Mock,
+        image_config_class: Mock,
+    ) -> None:
+        """The client should return binary data from the first inline image part."""
+
+        fake_response = SimpleNamespace(
+            parts=[
+                SimpleNamespace(text="caption", inline_data=None),
+                SimpleNamespace(
+                    text=None,
+                    inline_data=SimpleNamespace(),
+                    as_image=Mock(return_value=Image.new("RGB", (2, 2), color="red")),
+                ),
+            ]
+        )
+        fake_models = SimpleNamespace(generate_content=Mock(return_value=fake_response))
+        client_class.return_value = SimpleNamespace(models=fake_models)
+        http_options_class.side_effect = lambda **kwargs: kwargs
+        generate_content_config_class.side_effect = lambda **kwargs: kwargs
+        image_config_class.side_effect = lambda **kwargs: kwargs
+
+        client = GeminiImageClient(GeminiImageClientConfig(api_key="test-key"))
+        generated_image = client.generate_image("draw a dog")
+
+        self.assertIsInstance(generated_image, Image.Image)
+        self.assertEqual(generated_image.size, (2, 2))
+        fake_models.generate_content.assert_called_once()
+        http_options_class.assert_called_once_with(timeout=60000)
+
+    @patch("librito.gemini_client.genai.Client")
+    def test_sdk_client_errors_are_wrapped(self, client_class: Mock) -> None:
+        """SDK initialization failures should surface as client errors."""
+
+        client_class.side_effect = RuntimeError("boom")
+
+        with self.assertRaisesRegex(GeminiImageClientError, "Failed to initialize"):
+            GeminiImageClient(GeminiImageClientConfig(api_key="test-key"))
