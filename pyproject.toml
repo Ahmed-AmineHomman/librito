@@ -10,13 +10,15 @@ authors = [{ name = "Ahmed-Amine HOMMAN" }]
 urls = { Homepage = "https://github.com/Ahmed-AmineHomman/librito", Repository = "https://github.com/Ahmed-AmineHomman/librito" }
 
 [tool.setuptools]
-package-dir = { "" = "src" }
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
 include = ["librito*"]
 namespaces = false
+
+[tool.setuptools.package-data]
+"librito.resources" = ["*.txt"]
 
 [tool.setuptools.dynamic]
 version = { attr = "librito.__version__" }
