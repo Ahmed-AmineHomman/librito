@@ -2,8 +2,9 @@ Story Segmentation
 ==================
 
 The illustration generation stage expects a **segmented story** as input: a
-single JSON file describing the story title, shared visual constants, and an
-ordered list of scenes with their illustration prompts.
+single JSON file describing the story title, visual style, optional constraints,
+recurring concept definitions, and an ordered list of scenes with their
+illustration prompts.
 
 This segmentation is the bridge between a raw story and an illustrated book.
 ``librito`` does not automate this step. It can be done:
@@ -33,14 +34,14 @@ The segmented story must be a valid JSON object with exactly this structure:
 
    {
      "title": "Story title",
-     "constants": {
-       "style": "Artistic style description in English",
-       "recurring_concepts": {
-         "<CONCEPT_NAME>": "Detailed visual description of the concept"
-       }
+     "style": "Artistic style description in English",
+     "constraints": "",
+     "recurring_concepts": {
+       "<CONCEPT_NAME>": "Detailed visual description of the concept"
      },
      "scenes": [
        {
+         "index": 1,
          "text": "Scene text in the language of the story",
          "prompt": "Illustration prompt in English",
          "image_path": ""
@@ -54,16 +55,25 @@ Field Reference
 ``title``
    The book title.
 
-``constants.style``
+``style``
    A single English description of the visual style applied to all
    illustrations. This value is automatically prefixed to every scene prompt
    during generation.
 
-``constants.recurring_concepts``
+``constraints``
+   Optional generation constraints as a single string. When empty (the default),
+   the built-in constraints shipped in
+   ``librito/resources/prompt_constraints.txt`` are used. Populate this field
+   only when the story or user requires specific constraints beyond the defaults.
+
+``recurring_concepts``
    A dictionary of reusable visual anchors (characters, places, objects). Each
    key is an uppercase tag like ``<LEO>`` or ``<LIVING_ROOM>`` and each value is
    a stable visual description. During generation, tags in scene prompts are
    replaced by their description.
+
+``scenes[].index``
+   One-based position of the scene within the story.
 
 ``scenes[].text``
    The story text for the scene, written in the language of the original story.
@@ -86,16 +96,16 @@ Shortened excerpt showing one scene:
 
    {
      "title": "Léo et sa voiture rouge",
-     "constants": {
-       "style": "Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive family scenes",
-       "recurring_concepts": {
-         "<LEO>": "A 5-year-old boy with fair skin, short black hair, and brown eyes. He has a cheerful expression and wears a simple white t-shirt and beige pants.",
-         "<TOY_CAR>": "A small bright red toy car with black wheels and a shiny smooth body.",
-         "<LIVING_ROOM>": "A cozy family living room with a soft sofa, warm wooden floor, gentle daylight, and a welcoming home atmosphere."
-       }
+     "style": "Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive characters",
+     "constraints": "",
+     "recurring_concepts": {
+       "<LEO>": "A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.",
+       "<TOY_CAR>": "A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.",
+       "<LIVING_ROOM>": "A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight."
      },
      "scenes": [
        {
+         "index": 1,
          "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge qu'il ne quitte jamais...",
          "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>, smiling with relief as he pulls his <TOY_CAR> from under the sofa.",
          "image_path": ""
@@ -108,6 +118,7 @@ In this example:
 * the story text stays in French (the original language),
 * the illustration prompt is written in English,
 * recurring concepts are defined once and referenced by tag,
+* ``constraints`` is empty — the default constraints apply,
 * ``image_path`` is empty because no illustration has been generated yet.
 
 The full example with all three scenes is available in the file itself.
@@ -140,11 +151,11 @@ Rules
 * ``prompt`` is always written in English (best understood by image generation
   models).
 * Prompts must use tags whenever a recurring character, place, or object appears.
-* Every tag used in a prompt must be defined in
-  ``constants.recurring_concepts``.
+* Every tag used in a prompt must be defined in ``recurring_concepts``.
 * Character descriptions should be visually detailed enough to ensure consistent
   rendering across scenes (body type, age, clothing, hair, eye color, etc.).
 * ``image_path`` must be ``""`` at segmentation time.
+* ``constraints`` should be ``""`` unless specific constraints are needed.
 
 Using Tags Effectively
 ----------------------
@@ -187,10 +198,12 @@ Checklist
 Before passing the segmented story to the generation stage, verify:
 
 * the file is valid JSON,
-* top-level keys are exactly ``title``, ``constants``, and ``scenes``,
-* ``constants`` contains ``style`` and ``recurring_concepts``,
-* each scene contains exactly ``text``, ``prompt``, and ``image_path``,
+* top-level keys are exactly ``title``, ``style``, ``constraints``,
+  ``recurring_concepts``, and ``scenes``,
+* each scene contains exactly ``index``, ``text``, ``prompt``, and
+  ``image_path``,
 * prompts are in English,
 * scene texts are in the story language,
 * every tag used in a prompt is defined in ``recurring_concepts``,
-* ``image_path`` is empty for every scene.
+* ``image_path`` is empty for every scene,
+* ``constraints`` is empty unless specific constraints are needed.

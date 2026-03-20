@@ -1,4 +1,4 @@
-"""Tests for the dummy storybook skeleton exporter."""
+"""Tests for the storybook skeleton exporter."""
 
 from __future__ import annotations
 
@@ -9,24 +9,23 @@ from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
-from librito.export_storybook_skeleton import build_storybook_skeleton_markdown, export_storybook_skeleton, main
-from librito.models import StoryConstants, StoryScene, Storybook
+from export_storybook_skeleton import build_storybook_skeleton_markdown, export_storybook_skeleton, main
+from librito.models import StoryScene, Storybook
 
 
 class ExportStorybookSkeletonTests(unittest.TestCase):
     """Validate Markdown skeleton export behavior."""
 
-    def test_build_storybook_skeleton_markdown_expands_scene_prompts(self) -> None:
-        """The exported markdown should include fully built prompts per scene."""
+    def test_build_storybook_skeleton_markdown_expands_anchors(self) -> None:
+        """The exported markdown should include anchor-expanded prompts per scene."""
 
         storybook = Storybook(
             title="Calmio",
-            constants=StoryConstants(
-                style="soft watercolor",
-                recurring_concepts={"<CALMIO>": "A fluffy dog"},
-            ),
+            style="soft watercolor",
+            recurring_concepts={"<CALMIO>": "A fluffy dog"},
             scenes=[
                 StoryScene(
+                    index=1,
                     text="Calmio runs.",
                     prompt="<CALMIO> runs toward the river.",
                     image_path="",
@@ -40,13 +39,32 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
         self.assertIn("### Text", markdown)
         self.assertIn("Calmio runs.", markdown)
         self.assertIn("### Prompt", markdown)
-        self.assertIn("Style: soft watercolor", markdown)
-        self.assertIn("Scene: [A fluffy dog] runs toward the river.", markdown)
-        self.assertIn("single scene", markdown)
-        self.assertIn("no visible text", markdown)
+        self.assertIn("[A fluffy dog] runs toward the river.", markdown)
+        self.assertNotIn("Style:", markdown)
+        self.assertNotIn("Constraints:", markdown)
+
+    def test_build_storybook_skeleton_markdown_filters_by_scene_index(self) -> None:
+        """Only scenes whose index is in the provided list should appear."""
+
+        storybook = Storybook(
+            title="Calmio",
+            style="soft watercolor",
+            recurring_concepts={"<CALMIO>": "A fluffy dog"},
+            scenes=[
+                StoryScene(index=1, text="Scene one.", prompt="<CALMIO> runs.", image_path=""),
+                StoryScene(index=2, text="Scene two.", prompt="<CALMIO> rests.", image_path=""),
+                StoryScene(index=3, text="Scene three.", prompt="<CALMIO> sleeps.", image_path=""),
+            ],
+        )
+
+        markdown = build_storybook_skeleton_markdown(storybook, scene_indexes=[1, 3])
+
+        self.assertIn("## Scene 01", markdown)
+        self.assertNotIn("## Scene 02", markdown)
+        self.assertIn("## Scene 03", markdown)
 
     def test_export_storybook_skeleton_writes_output_file(self) -> None:
-        """Exporting should write the expected markdown file."""
+        """Exporting should write the expected markdown file when output path is given."""
 
         with _workspace_temporary_directory() as temporary_directory:
             story_path = temporary_directory / "story.json"
@@ -59,8 +77,8 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
 
         self.assertIn("## Scene 01", markdown)
         self.assertIn("## Scene 02", markdown)
-        self.assertIn("Scene: [A fluffy dog] runs across the street.", markdown)
-        self.assertIn("Scene: [A fluffy dog] rests at home.", markdown)
+        self.assertIn("[A fluffy dog] runs across the street.", markdown)
+        self.assertIn("[A fluffy dog] rests at home.", markdown)
 
     def test_main_accepts_named_parameters(self) -> None:
         """The command-line entrypoint should accept the required named flags."""
@@ -72,9 +90,9 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
 
             exit_code = main(
                 [
-                    "--input-json",
+                    "--storybook",
                     str(story_path),
-                    "--output-filepath",
+                    "--output-file",
                     str(output_path),
                 ]
             )
@@ -96,19 +114,20 @@ def _sample_story_payload() -> dict[str, object]:
 
     return {
         "title": "Calmio",
-        "constants": {
-            "style": "soft watercolor",
-            "recurring_concepts": {
-                "<CALMIO>": "A fluffy dog",
-            },
+        "style": "soft watercolor",
+        "constraints": "",
+        "recurring_concepts": {
+            "<CALMIO>": "A fluffy dog",
         },
         "scenes": [
             {
+                "index": 1,
                 "text": "Calmio runs.",
                 "prompt": "<CALMIO> runs across the street.",
                 "image_path": "",
             },
             {
+                "index": 2,
                 "text": "Calmio rests.",
                 "prompt": "<CALMIO> rests at home.",
                 "image_path": "",

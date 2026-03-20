@@ -6,7 +6,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from librito.gemini_client import GeminiImageClient, GeminiImageClientConfig
+from librito.image_clients import ImageClient
+from librito.image_clients.gemini import GeminiImageClient, GeminiImageClientConfig
+from librito.image_clients.mock import MockImageClient, MockImageClientConfig
 from librito.prompt_builder import build_scene_prompt
 from librito.story_io import load_storybook, save_storybook
 
@@ -39,10 +41,55 @@ class IllustrationGenerationConfig:
     api_key_env_var: str = "GEMINI_API_KEY"
 
 
+def _build_default_client(
+    config: IllustrationGenerationConfig,
+    *,
+    mock: bool = False,
+) -> ImageClient:
+    """Build the default image generation client.
+
+    Parameters
+    ----------
+    config:
+        Generation configuration.
+    mock:
+        When ``True``, return a mock client that produces pixel-noise images
+        instead of calling a real API.
+
+    Returns
+    -------
+    ImageClient
+        Ready-to-use image generation client.
+    """
+
+    if mock:
+        return MockImageClient(
+            MockImageClientConfig(
+                aspect_ratio=config.aspect_ratio,
+                image_size=config.image_size,
+            )
+        )
+
+    api_key = os.getenv(config.api_key_env_var)
+    if not api_key:
+        raise RuntimeError(f"Missing required environment variable: {config.api_key_env_var}.")
+    return GeminiImageClient(
+        GeminiImageClientConfig(
+            api_key=api_key,
+            model=config.model,
+            aspect_ratio=config.aspect_ratio,
+            image_size=config.image_size,
+            timeout_seconds=config.timeout_seconds,
+        )
+    )
+
+
 def generate_story_illustrations(
     story_path: Path,
-    client: GeminiImageClient | None = None,
+    client: ImageClient | None = None,
     config: IllustrationGenerationConfig | None = None,
+    *,
+    mock: bool = False,
 ) -> None:
     """Generate all missing illustrations for a segmented story.
 
@@ -51,9 +98,12 @@ def generate_story_illustrations(
     story_path:
         Path to the segmented ``story.json`` file.
     client:
-        Optional preconfigured Gemini client used mainly for tests.
+        Optional preconfigured image client used mainly for tests.
     config:
         Optional internal generation configuration.
+    mock:
+        When ``True`` and no *client* is provided, use the mock image client
+        instead of the real Gemini client.
     """
 
     config = config or IllustrationGenerationConfig()
@@ -62,18 +112,7 @@ def generate_story_illustrations(
     output_directory.mkdir(parents=True, exist_ok=True)
 
     if client is None:
-        api_key = os.getenv(config.api_key_env_var)
-        if not api_key:
-            raise RuntimeError(f"Missing required environment variable: {config.api_key_env_var}.")
-        client = GeminiImageClient(
-            GeminiImageClientConfig(
-                api_key=api_key,
-                model=config.model,
-                aspect_ratio=config.aspect_ratio,
-                image_size=config.image_size,
-                timeout_seconds=config.timeout_seconds,
-            )
-        )
+        client = _build_default_client(config, mock=mock)
 
     for scene in storybook.scenes:
         if scene.image_path and (story_path.parent / scene.image_path).exists():

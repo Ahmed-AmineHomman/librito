@@ -125,20 +125,21 @@ def _sample_story_payload() -> dict[str, object]:
 
     return {
         "title": "Calmio",
-        "constants": {
-            "style": "soft watercolor",
-            "recurring_concepts": {
-                "<CALMIO>": "A fluffy dog",
-                "<RIVER>": "A bright river",
-            },
+        "style": "soft watercolor",
+        "constraints": "",
+        "recurring_concepts": {
+            "<CALMIO>": "A fluffy dog",
+            "<RIVER>": "A bright river",
         },
         "scenes": [
             {
+                "index": 1,
                 "text": "Calmio runs.",
                 "prompt": "<CALMIO> runs toward <RIVER>.",
                 "image_path": "",
             },
             {
+                "index": 2,
                 "text": "Calmio rests.",
                 "prompt": "<CALMIO> rests beside <RIVER>.",
                 "image_path": "",

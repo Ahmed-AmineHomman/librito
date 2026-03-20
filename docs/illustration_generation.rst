@@ -17,13 +17,13 @@ From the repository root:
 
 .. code-block:: bash
 
-   python -m librito.generate_illustrations path/to/story.json
+   python generate_illustrations.py path/to/story.json
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-   .\.venv\Scripts\python.exe -m librito.generate_illustrations .\path\to\story.json
+   .\.venv\Scripts\python.exe generate_illustrations.py .\path\to\story.json
 
 What the Command Does
 ---------------------
@@ -50,11 +50,12 @@ Prompt Construction
 
 The generation process builds the final prompt in three layers:
 
-1. **Style** — the global style from ``constants.style``.
+1. **Style** — the global style from ``style``.
 2. **Scene prompt** — the scene's ``prompt`` field after anchor expansion
    (recurring concept tags are replaced by their bracketed descriptions).
-3. **Constraints** — static generation constraints from the packaged resource
-   file ``librito/resources/prompt_constraints.txt``.
+3. **Constraints** — when the storybook's ``constraints`` field is non-empty, its
+   value is used. Otherwise the default constraints from the packaged resource
+   file ``librito/resources/prompt_constraints.txt`` are applied.
 
 These are assembled using the template in
 ``librito/resources/image_prompt_template.txt``:
@@ -68,12 +69,13 @@ These are assembled using the template in
    Constraints:
    {constraints}
 
-The current packaged constraints are:
+The current default packaged constraints are:
 
 .. code-block:: text
 
    single scene
    no visible text
+   no frame or border
 
 Anchor Expansion Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +91,7 @@ description in brackets:
 
 .. code-block:: text
 
-   [A 5-year-old boy with fair skin, short black hair, and brown eyes. He has a cheerful expression and wears a simple white t-shirt and beige pants.] kneels on the floor of the [A cozy family living room with a soft sofa, warm wooden floor, gentle daylight, and a welcoming home atmosphere.], smiling with relief as he pulls his [A small bright red toy car with black wheels and a shiny smooth body.] from under the sofa.
+   [A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.] kneels on the floor of the [A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight.], smiling with relief as he pulls his [A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.] from under the sofa.
 
 This makes the prompt self-contained: the model receives actual visual
 descriptions instead of abstract tag names.
@@ -101,13 +103,14 @@ For the same scene, the fully assembled prompt is:
 
 .. code-block:: text
 
-   Style: Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive family scenes
+   Style: Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive characters
 
-   Scene: [A 5-year-old boy with fair skin, short black hair, and brown eyes. He has a cheerful expression and wears a simple white t-shirt and beige pants.] kneels on the floor of the [A cozy family living room with a soft sofa, warm wooden floor, gentle daylight, and a welcoming home atmosphere.], smiling with relief as he pulls his [A small bright red toy car with black wheels and a shiny smooth body.] from under the sofa.
+   Scene: [A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.] kneels on the floor of the [A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight.], smiling with relief as he pulls his [A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.] from under the sofa.
 
    Constraints:
    single scene
    no visible text
+   no frame or border
 
 The style drives the general visual look, the scene prompt describes the action,
 the anchors provide stable visual definitions, and the constraints add global
@@ -132,6 +135,7 @@ After generation, each scene's ``image_path`` contains a relative path:
 .. code-block:: json
 
    {
+     "index": 1,
      "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge...",
      "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>...",
      "image_path": "illustrations/scene-001.png"
@@ -182,3 +186,6 @@ The current implementation does not provide:
 * a dry-run mode,
 * a single-scene generation flag,
 * command-line overrides for model, aspect ratio, or image size.
+
+For debugging purposes, the ``--mock-image-generation`` flag can be passed to
+the generation script to produce pixel-noise images without calling a real API.

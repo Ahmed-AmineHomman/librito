@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from librito.models import StoryConstants, StoryScene, Storybook
+from librito.models import StoryScene, Storybook
 from librito.prompt_builder import build_scene_prompt, expand_prompt_anchors
 
 
@@ -27,17 +27,16 @@ class PromptBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Undefined recurring concept anchor"):
             expand_prompt_anchors("<MISSING> appears.", {"<CALMIO>": "A fluffy dog"})
 
-    def test_build_scene_prompt_uses_style_template_and_constraints_resource(self) -> None:
-        """The final prompt should combine style, expanded scene prompt, and constraints."""
+    def test_build_scene_prompt_uses_style_template_and_default_constraints(self) -> None:
+        """The final prompt should combine style, expanded scene prompt, and default constraints."""
 
         storybook = Storybook(
             title="Calmio",
-            constants=StoryConstants(
-                style="soft watercolor",
-                recurring_concepts={"<CALMIO>": "A fluffy dog"},
-            ),
+            style="soft watercolor",
+            recurring_concepts={"<CALMIO>": "A fluffy dog"},
             scenes=[
                 StoryScene(
+                    index=1,
                     text="Calmio runs.",
                     prompt="<CALMIO> runs toward the river.",
                     image_path="",
@@ -51,6 +50,29 @@ class PromptBuilderTests(unittest.TestCase):
         self.assertIn("Scene: [A fluffy dog] runs toward the river.", prompt)
         self.assertIn("single scene", prompt)
         self.assertIn("no visible text", prompt)
+
+    def test_build_scene_prompt_uses_custom_constraints_when_provided(self) -> None:
+        """Custom constraints from the storybook should override the default resource."""
+
+        storybook = Storybook(
+            title="Calmio",
+            style="soft watercolor",
+            recurring_concepts={"<CALMIO>": "A fluffy dog"},
+            scenes=[
+                StoryScene(
+                    index=1,
+                    text="Calmio runs.",
+                    prompt="<CALMIO> runs toward the river.",
+                    image_path="",
+                )
+            ],
+            constraints="custom constraint",
+        )
+
+        prompt = build_scene_prompt(storybook, storybook.scenes[0])
+
+        self.assertIn("custom constraint", prompt)
+        self.assertNotIn("single scene", prompt)
 
 
 if __name__ == "__main__":

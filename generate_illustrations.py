@@ -27,12 +27,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Generate illustrations for a segmented storybook.",
     )
     parser.add_argument(
-        "story_path",
+        "--storybook",
+        required=True,
         type=Path,
         help="Path to the story JSON file.",
     )
+    parser.add_argument(
+        "--mock-image-generation",
+        action="store_true",
+        default=False,
+        help="Use a mock image client (pixel noise) instead of the real API.",
+    )
     arguments = parser.parse_args(argv)
-    generate_story_illustrations(arguments.story_path)
+    generate_story_illustrations(
+        arguments.storybook,
+        mock=arguments.mock_image_generation,
+    )
     return 0
 
 
