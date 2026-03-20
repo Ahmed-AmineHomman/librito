@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 from unittest.mock import patch
 
-from export_storybook_skeleton import (
+from analyse_segmentation import (
     build_anchor_occurrence_report,
     build_storybook_skeleton_markdown,
     count_anchor_occurrences,

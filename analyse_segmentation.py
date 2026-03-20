@@ -1,4 +1,4 @@
-"""Export expanded storybook prompts for consistency diagnosis."""
+"""Analyse the segmentation by performing consistency diagnosis & prompt anchor expansion."""
 
 from __future__ import annotations
 
@@ -159,7 +159,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
 
     parser = argparse.ArgumentParser(
-        description="Export expanded storybook prompts for consistency diagnosis.",
+        description="Analyse segmentation consistency (anchor count, prompt with anchor expansion).",
     )
     parser.add_argument(
         "--storybook",
