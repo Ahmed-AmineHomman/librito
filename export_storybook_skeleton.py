@@ -3,13 +3,67 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
 from librito.models import Storybook
 from librito.prompt_builder import expand_prompt_anchors
 from librito.story_io import load_storybook
+
+_ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
+
+
+def count_anchor_occurrences(storybook: Storybook) -> dict[str, int]:
+    """Count recurring concept anchor occurrences across all scene prompts.
+
+    Parameters
+    ----------
+    storybook:
+        Parsed storybook definition loaded from JSON.
+
+    Returns
+    -------
+    dict[str, int]
+        Mapping from each defined recurring concept anchor to the number of
+        times it appears in the raw scene prompts across the full storybook.
+    """
+
+    counts: Counter[str] = Counter(
+        anchor
+        for scene in storybook.scenes
+        for anchor in _ANCHOR_PATTERN.findall(scene.prompt)
+    )
+    return {
+        anchor: counts.get(anchor, 0)
+        for anchor in sorted(storybook.recurring_concepts)
+    }
+
+
+def build_anchor_occurrence_report(storybook: Storybook) -> str:
+    """Build a textual report describing anchor usage across the storybook.
+
+    Parameters
+    ----------
+    storybook:
+        Parsed storybook definition loaded from JSON.
+
+    Returns
+    -------
+    str
+        Human-readable anchor occurrence report suitable for stdout.
+    """
+
+    counts = count_anchor_occurrences(storybook)
+    lines = ["Anchor occurrences:"]
+    lines.extend(f"- {anchor}: {count}" for anchor, count in counts.items())
+    single_use_anchors = [anchor for anchor, count in counts.items() if count == 1]
+    if single_use_anchors:
+        anchor_list = ", ".join(single_use_anchors)
+        lines.append(f"WARNING: single-use anchors detected: {anchor_list}")
+    return "\n".join(lines)
 
 
 def build_storybook_skeleton_markdown(
@@ -82,8 +136,9 @@ def export_storybook_skeleton(
     """
 
     storybook = load_storybook(input_json)
+    report = build_anchor_occurrence_report(storybook)
     markdown = build_storybook_skeleton_markdown(storybook, scene_indexes)
-    sys.stdout.write(markdown)
+    sys.stdout.write(f"{report}\n\n{markdown}")
     if output_filepath is not None:
         output_filepath.parent.mkdir(parents=True, exist_ok=True)
         output_filepath.write_text(markdown, encoding="utf-8")
