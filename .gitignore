@@ -215,3 +215,6 @@ __marimo__/
 .claude/
 .copilot/
 .cursor/
+
+# database (specific to this project, not a general recommendation)
+database/

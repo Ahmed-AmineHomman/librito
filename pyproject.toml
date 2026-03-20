@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "librito"
+dynamic = ["version", "dependencies", "optional-dependencies"]
+requires-python = ">=3.12"
+authors = [{ name = "Ahmed-Amine HOMMAN" }]
+urls = { Homepage = "https://github.com/Ahmed-AmineHomman/librito", Repository = "https://github.com/Ahmed-AmineHomman/librito" }
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["librito*"]
+namespaces = false
+
+[tool.setuptools.dynamic]
+version = { attr = "librito.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.dynamic.optional-dependencies]
+doc = { file = ["requirements_doc.txt"] }
