@@ -1,29 +1,17 @@
 Story Segmentation
 ==================
 
-The illustration generation stage expects a **segmented story** as input: a
-single JSON file describing the story title, visual style, optional constraints,
-recurring concept definitions, and an ordered list of scenes with their
-illustration prompts.
+The story segmentation stage transforms a raw story into a structured JSON file
+ready for illustration generation. The result captures:
 
-This segmentation is the bridge between a raw story and an illustrated book.
-``librito`` does not automate this step. It can be done:
+* the story title,
+* one global visual style,
+* optional generation constraints,
+* recurring visual concepts defined as anchors,
+* an ordered list of scenes containing story text and illustration prompts.
 
-* **manually**, by writing the JSON file according to the schema below, or
-* **with a coding agent** (e.g. GitHub Copilot) configured with the
-  ``segment-story`` skill shipped in ``.agents/skills/segment-story/``.
-
-Because story segmentation is inherently a creative task — extracting narrative
-beats, defining visual concepts, writing illustration prompts — it is well
-suited to LLM-based agents and may never be implemented as library code.
-
-This document describes the expected format and gives guidance on how to produce
-good segmentations. It uses the Leo sample story shipped in
-``docs/examples/leo/`` as a running example. That directory contains:
-
-* ``story.md`` — the original story text (input to segmentation),
-* ``story.json`` — the resulting segmented story (input to illustration
-  generation).
+This page describes both the **segmentation standard** and the **agentic
+workflow** used to produce it.
 
 Expected JSON Format
 --------------------
@@ -41,7 +29,7 @@ The segmented story must be a valid JSON object with exactly this structure:
      },
      "scenes": [
        {
-         "index": 1,
+         "label": "scene-find-car",
          "text": "Scene text in the language of the story",
          "prompt": "Illustration prompt in English",
          "image_path": ""
@@ -72,19 +60,20 @@ Field Reference
    a stable visual description. During generation, tags in scene prompts are
    replaced by their description.
 
-``scenes[].index``
-   One-based position of the scene within the story.
+``scenes[].label``
+   Stable identifier for the scene. Labels must be unique and non-empty. They
+   do not define order; the order comes from the ``scenes`` array itself.
 
 ``scenes[].text``
    The story text for the scene, written in the language of the original story.
 
 ``scenes[].prompt``
-   The illustration prompt for the scene, always written in English. Should
-   reference recurring concepts through their tags.
+   The illustration prompt for the scene, always written in English. It should
+   reference recurring concepts through their tags whenever those concepts
+   appear in more than one scene.
 
 ``scenes[].image_path``
-   Reserved for generated image paths. Must be an empty string at segmentation
-   time.
+   Reserved for generated image paths. Segmentation tools do not modify it.
 
 Running Example
 ---------------
@@ -105,7 +94,7 @@ Shortened excerpt showing one scene:
      },
      "scenes": [
        {
-         "index": 1,
+         "label": "scene-find-car",
          "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge qu'il ne quitte jamais...",
          "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>, smiling with relief as he pulls his <TOY_CAR> from under the sofa.",
          "image_path": ""
@@ -115,95 +104,140 @@ Shortened excerpt showing one scene:
 
 In this example:
 
-* the story text stays in French (the original language),
+* the story text stays in French,
 * the illustration prompt is written in English,
 * recurring concepts are defined once and referenced by tag,
-* ``constraints`` is empty — the default constraints apply,
-* ``image_path`` is empty because no illustration has been generated yet.
+* scene identity is handled by ``label``,
+* scene order is defined by the list order,
+* ``constraints`` is empty because the default constraints apply.
 
-The full example with all three scenes is available in the file itself.
+Segmentation Architecture
+-------------------------
 
-How to Segment a Story
-----------------------
+The segmentation workflow is agentic, but the underlying design is simple:
 
-Good segmentation does not cut the story mechanically sentence by sentence. It
-extracts the scenes that matter for the illustrated narrative.
+1. A source story is loaded.
+2. A mutable segmentation state is created or resumed.
+3. The agent iteratively edits that state through a constrained toolset.
+4. The agent uses analysis tools to inspect the current draft.
+5. The final storybook is exported only when validation passes.
 
-Recommended method:
+This design deliberately separates:
 
-1. Read the full story and identify its main narrative beats.
-2. Identify recurring visual concepts (characters, locations, objects) that must
-   stay consistent across illustrations.
-3. Define one global illustration style in English.
-4. Split the story into scenes that preserve narrative flow.
-5. Write one ``text`` per scene in the language of the original story.
-6. Write one ``prompt`` per scene in English, focusing on the main visual idea.
-7. Use recurring concept tags in prompts instead of rewriting descriptions.
+* **creative work**: choosing scenes, phrasing scene text, selecting visual
+  emphasis, and defining concept descriptions;
+* **structural guarantees**: schema validity, anchor usage, and prompt
+  consistency.
 
-The goal is to preserve the story's meaning, rhythm, and readability while
-producing clear illustration prompts. Some parts of the original story may be
-dropped as long as the overall flow is not harmed.
+The state being edited is the storybook itself: global attributes, recurring
+concepts, and ordered scenes.
 
-Rules
------
+Segmentation Instructions
+-------------------------
 
-* ``text`` stays in the language of the original story.
-* ``prompt`` is always written in English (best understood by image generation
-  models).
-* Prompts must use tags whenever a recurring character, place, or object appears.
-* Every tag used in a prompt must be defined in ``recurring_concepts``.
-* Character descriptions should be visually detailed enough to ensure consistent
-  rendering across scenes (body type, age, clothing, hair, eye color, etc.).
-* ``image_path`` must be ``""`` at segmentation time.
-* ``constraints`` should be ``""`` unless specific constraints are needed.
+The segmentation agent should follow a narrow workflow:
 
-Using Tags Effectively
-----------------------
+1. Read the full story.
+2. Inspect the current segmentation draft.
+3. Define or update the title, style, and optional constraints.
+4. Define recurring concepts only for visually important concepts that appear in
+   more than one scene.
+5. Build scenes in narrative order.
+6. Write scene texts in the story language.
+7. Write scene prompts in English.
+8. Run prompt-consistency checks.
+9. Repair the draft until validation passes.
+10. Export the storybook.
 
-Tags prevent the image generation model from reinventing the same character or
-object differently in each scene.
+Prompt Consistency
+------------------
 
-Prefer prompts that use defined tags:
+Prompt consistency is treated as a concrete validation problem.
 
-.. code-block:: text
+The first validation slice checks only:
 
-   <LEO> kneels on the floor of the <LIVING_ROOM>, smiling as he pulls his <TOY_CAR> from under the sofa.
+* undefined anchors,
+* unused recurring concepts,
+* anchors used in exactly one unique scene.
 
-Avoid prompts that drop the tags:
+This keeps the validator narrow and deterministic while still enforcing the core
+anchor policy:
 
-.. code-block:: text
+* recurring concepts should be anchored,
+* one-scene concepts should remain inline,
+* every anchored prompt must remain resolvable.
 
-   Leo kneels on the floor of the living room, smiling as he pulls his small red toy car from under the sofa.
+Toolset
+-------
 
-The second version is weaker because the image generation model no longer has
-stable visual definitions for Leo, the living room, or the toy car.
+An implementation can expose the following categories of tools:
 
-Not every element needs a tag. One-off scene details can stay as plain text:
+Read tools
+~~~~~~~~~~
 
-.. code-block:: text
+* get the full story,
+* get the title, style, and constraints,
+* list recurring concepts,
+* list scenes in their current order.
 
-   <LEO> sits in the <LIVING_ROOM> with his mother, happily enjoying a snack of cakes.
+Write tools
+~~~~~~~~~~~
 
-Here ``his mother`` and ``a snack of cakes`` are local to the scene and do not
-need reusable tags.
+* set the title, style, and constraints,
+* add, remove, and rename recurring concepts,
+* add, update, move, and delete scenes.
 
-Rule of thumb:
+Analysis tools
+~~~~~~~~~~~~~~
 
-* recurring, visually important elements → tags,
-* local scene details → plain text.
+* count concept occurrences across the story,
+* check prompt consistency,
+* expand prompts,
+* expand scenes with expanded prompts when needed.
+
+Finalization
+~~~~~~~~~~~~
+
+* export the final storybook only when validation succeeds.
+
+Implementation
+--------------
+
+The current implementation uses a filesystem-backed draft and a single ADK
+agent run:
+
+* ``segment_story.py`` starts the segmentation agent,
+* the raw story is stored separately from the segmentation draft,
+* the draft is autosaved after every mutation tool call,
+* the final ``story.json`` is written only by the export tool,
+* the agent tools are thin wrappers over a Python editor service.
+
+More concretely:
+
+* ``story.md`` stores the source story text,
+* ``story.segmentation.draft.json`` stores the mutable segmentation draft,
+* ``story.json`` stores the exported validated segmentation.
+
+The current runtime uses:
+
+* Google ADK as the agent framework,
+* plain function tools registered with the agent,
+* LiteLLM for LM Studio's local API,
+* Gemini models for larger runs when the ``gemini`` provider is selected.
 
 Checklist
 ---------
 
-Before passing the segmented story to the generation stage, verify:
+Before a segmentation is passed to illustration generation, verify:
 
 * the file is valid JSON,
 * top-level keys are exactly ``title``, ``style``, ``constraints``,
   ``recurring_concepts``, and ``scenes``,
-* each scene contains exactly ``index``, ``text``, ``prompt``, and
+* each scene contains exactly ``label``, ``text``, ``prompt``, and
   ``image_path``,
+* labels are unique non-empty strings,
 * prompts are in English,
 * scene texts are in the story language,
 * every tag used in a prompt is defined in ``recurring_concepts``,
-* ``image_path`` is empty for every scene,
-* ``constraints`` is empty unless specific constraints are needed.
+* unused recurring concepts are removed,
+* anchors used in one unique scene are removed or inlined.

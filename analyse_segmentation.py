@@ -68,7 +68,7 @@ def build_anchor_occurrence_report(storybook: Storybook) -> str:
 
 def build_storybook_skeleton_markdown(
     storybook: Storybook,
-    scene_indexes: list[int] | None = None,
+    scene_labels: list[str] | None = None,
 ) -> str:
     """Build the Markdown skeleton for a segmented storybook.
 
@@ -79,9 +79,9 @@ def build_storybook_skeleton_markdown(
     ----------
     storybook:
         Parsed storybook definition loaded from JSON.
-    scene_indexes:
-        Optional list of scene indexes to include.  When ``None`` or empty,
-        all scenes are included.
+    scene_labels:
+        Optional list of scene labels to include.  When ``None`` or empty, all
+        scenes are included.
 
     Returns
     -------
@@ -92,13 +92,13 @@ def build_storybook_skeleton_markdown(
 
     sections: list[str] = []
     for scene in storybook.scenes:
-        if scene_indexes and scene.index not in scene_indexes:
+        if scene_labels and scene.label not in scene_labels:
             continue
         expanded_prompt = expand_prompt_anchors(
             scene.prompt,
             storybook.recurring_concepts,
         ).strip()
-        scene_name = f"Scene {scene.index:02d}"
+        scene_name = scene.label
         sections.append(
             "\n".join(
                 [
@@ -121,7 +121,7 @@ def build_storybook_skeleton_markdown(
 def export_storybook_skeleton(
     input_json: Path,
     output_filepath: Path | None = None,
-    scene_indexes: list[int] | None = None,
+    scene_labels: list[str] | None = None,
 ) -> None:
     """Print (and optionally write) a Markdown story skeleton.
 
@@ -131,13 +131,13 @@ def export_storybook_skeleton(
         Path to the segmented story JSON file.
     output_filepath:
         Optional destination path for the generated Markdown file.
-    scene_indexes:
-        Optional scene indexes to include.
+    scene_labels:
+        Optional scene labels to include.
     """
 
     storybook = load_storybook(input_json)
     report = build_anchor_occurrence_report(storybook)
-    markdown = build_storybook_skeleton_markdown(storybook, scene_indexes)
+    markdown = build_storybook_skeleton_markdown(storybook, scene_labels)
     sys.stdout.write(f"{report}\n\n{markdown}")
     if output_filepath is not None:
         output_filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -177,9 +177,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--scenes",
         nargs="*",
-        type=int,
+        type=str,
         default=None,
-        help="Scene indexes to include (all scenes if omitted).",
+        help="Scene labels to include (all scenes if omitted).",
     )
     arguments = parser.parse_args(argv)
     export_storybook_skeleton(

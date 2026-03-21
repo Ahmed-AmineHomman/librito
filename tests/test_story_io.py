@@ -27,7 +27,7 @@ class StoryIoTests(unittest.TestCase):
         self.assertEqual(storybook.title, "Calmio")
         self.assertEqual(storybook.style, "soft watercolor")
         self.assertEqual(storybook.constraints, "")
-        self.assertEqual(storybook.scenes[0].index, 1)
+        self.assertEqual(storybook.scenes[0].label, "scene-001")
         self.assertEqual(storybook.scenes[0].image_path, "")
 
     def test_load_storybook_rejects_unexpected_top_level_keys(self) -> None:
@@ -76,7 +76,7 @@ def _sample_story_payload() -> dict[str, object]:
         },
         "scenes": [
             {
-                "index": 1,
+                "label": "scene-001",
                 "text": "Calmio runs.",
                 "prompt": "<CALMIO> runs across the street.",
                 "image_path": "",

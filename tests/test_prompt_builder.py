@@ -36,7 +36,7 @@ class PromptBuilderTests(unittest.TestCase):
             recurring_concepts={"<CALMIO>": "A fluffy dog"},
             scenes=[
                 StoryScene(
-                    index=1,
+                    label="scene-001",
                     text="Calmio runs.",
                     prompt="<CALMIO> runs toward the river.",
                     image_path="",
@@ -60,7 +60,7 @@ class PromptBuilderTests(unittest.TestCase):
             recurring_concepts={"<CALMIO>": "A fluffy dog"},
             scenes=[
                 StoryScene(
-                    index=1,
+                    label="scene-001",
                     text="Calmio runs.",
                     prompt="<CALMIO> runs toward the river.",
                     image_path="",

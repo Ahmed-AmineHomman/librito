@@ -30,12 +30,13 @@ What the Command Does
 
 1. Loads and validates the segmented ``story.json``.
 2. Creates the ``illustrations/`` subdirectory next to the JSON file if needed.
-3. Iterates over scenes in order.
+3. Iterates over scenes in array order.
 4. For each scene without an existing illustration:
 
    a. Builds the final prompt (see `Prompt Construction`_ below).
    b. Sends the prompt to the configured image generation model.
-   c. Saves the returned image as ``scene-001.png``, ``scene-002.png``, etc.
+   c. Saves the returned image as ``scene-001.png``, ``scene-002.png``, etc.,
+      based on the current scene order.
    d. Updates the scene's ``image_path`` in the JSON file immediately.
 
 Resume Behavior
@@ -135,7 +136,7 @@ After generation, each scene's ``image_path`` contains a relative path:
 .. code-block:: json
 
    {
-     "index": 1,
+     "label": "scene-find-car",
      "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge...",
      "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>...",
      "image_path": "illustrations/scene-001.png"

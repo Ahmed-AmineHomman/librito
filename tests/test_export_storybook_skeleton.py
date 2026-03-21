@@ -37,13 +37,13 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
             },
             scenes=[
                 StoryScene(
-                    index=1,
+                    label="scene-001",
                     text="Scene one.",
                     prompt="<CALMIO> runs by the <RIVER>.",
                     image_path="",
                 ),
                 StoryScene(
-                    index=2,
+                    label="scene-002",
                     text="Scene two.",
                     prompt="<CALMIO> smells a <FLOWER> near the <RIVER>.",
                     image_path="",
@@ -74,13 +74,13 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
             },
             scenes=[
                 StoryScene(
-                    index=1,
+                    label="scene-001",
                     text="Scene one.",
                     prompt="<CALMIO> smells a <FLOWER>.",
                     image_path="",
                 ),
                 StoryScene(
-                    index=2,
+                    label="scene-002",
                     text="Scene two.",
                     prompt="<CALMIO> rests.",
                     image_path="",
@@ -104,7 +104,7 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
             recurring_concepts={"<CALMIO>": "A fluffy dog"},
             scenes=[
                 StoryScene(
-                    index=1,
+                    label="scene-001",
                     text="Calmio runs.",
                     prompt="<CALMIO> runs toward the river.",
                     image_path="",
@@ -114,7 +114,7 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
 
         markdown = build_storybook_skeleton_markdown(storybook)
 
-        self.assertIn("## Scene 01", markdown)
+        self.assertIn("## scene-001", markdown)
         self.assertIn("### Text", markdown)
         self.assertIn("Calmio runs.", markdown)
         self.assertIn("### Prompt", markdown)
@@ -122,25 +122,25 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
         self.assertNotIn("Style:", markdown)
         self.assertNotIn("Constraints:", markdown)
 
-    def test_build_storybook_skeleton_markdown_filters_by_scene_index(self) -> None:
-        """Only scenes whose index is in the provided list should appear."""
+    def test_build_storybook_skeleton_markdown_filters_by_scene_label(self) -> None:
+        """Only scenes whose label is in the provided list should appear."""
 
         storybook = Storybook(
             title="Calmio",
             style="soft watercolor",
             recurring_concepts={"<CALMIO>": "A fluffy dog"},
             scenes=[
-                StoryScene(index=1, text="Scene one.", prompt="<CALMIO> runs.", image_path=""),
-                StoryScene(index=2, text="Scene two.", prompt="<CALMIO> rests.", image_path=""),
-                StoryScene(index=3, text="Scene three.", prompt="<CALMIO> sleeps.", image_path=""),
+                StoryScene(label="scene-001", text="Scene one.", prompt="<CALMIO> runs.", image_path=""),
+                StoryScene(label="river-break", text="Scene two.", prompt="<CALMIO> rests.", image_path=""),
+                StoryScene(label="scene-010", text="Scene three.", prompt="<CALMIO> sleeps.", image_path=""),
             ],
         )
 
-        markdown = build_storybook_skeleton_markdown(storybook, scene_indexes=[1, 3])
+        markdown = build_storybook_skeleton_markdown(storybook, scene_labels=["scene-001", "scene-010"])
 
-        self.assertIn("## Scene 01", markdown)
-        self.assertNotIn("## Scene 02", markdown)
-        self.assertIn("## Scene 03", markdown)
+        self.assertIn("## scene-001", markdown)
+        self.assertNotIn("## river-break", markdown)
+        self.assertIn("## scene-010", markdown)
 
     def test_export_storybook_skeleton_writes_output_file(self) -> None:
         """Exporting should write the expected markdown file when output path is given."""
@@ -159,8 +159,8 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
 
         self.assertIn("Anchor occurrences:", stdout_text)
         self.assertIn("- <CALMIO>: 2", stdout_text)
-        self.assertIn("## Scene 01", markdown)
-        self.assertIn("## Scene 02", markdown)
+        self.assertIn("## scene-001", markdown)
+        self.assertIn("## scene-002", markdown)
         self.assertIn("[A fluffy dog] runs across the street.", markdown)
         self.assertIn("[A fluffy dog] rests at home.", markdown)
         self.assertNotIn("Anchor occurrences:", markdown)
@@ -210,13 +210,13 @@ def _sample_story_payload() -> dict[str, object]:
         },
         "scenes": [
             {
-                "index": 1,
+                "label": "scene-001",
                 "text": "Calmio runs.",
                 "prompt": "<CALMIO> runs across the street.",
                 "image_path": "",
             },
             {
-                "index": 2,
+                "label": "scene-002",
                 "text": "Calmio rests.",
                 "prompt": "<CALMIO> rests at home.",
                 "image_path": "",

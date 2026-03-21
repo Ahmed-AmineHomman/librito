@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from librito.models import StoryScene, Storybook
 
 _TOP_LEVEL_KEYS = {"title", "style", "constraints", "recurring_concepts", "scenes"}
-_SCENE_KEYS = {"index", "text", "prompt", "image_path"}
+_SCENE_KEYS = {"label", "text", "prompt", "image_path"}
 
 
 def load_storybook(path: Path) -> Storybook:
@@ -50,16 +49,20 @@ def load_storybook(path: Path) -> Storybook:
         raise ValueError("story.scenes must be an array.")
 
     scenes: list[StoryScene] = []
+    seen_labels: set[str] = set()
     for position, scene_payload in enumerate(scenes_payload, start=1):
         if not isinstance(scene_payload, dict):
             raise ValueError(f"scene {position} must be an object.")
         _require_exact_keys(scene_payload, _SCENE_KEYS, f"scene {position}")
-        scene_index = scene_payload["index"]
-        if not isinstance(scene_index, int):
-            raise ValueError(f"scene {position}.index must be an integer.")
+        scene_label = _require_string(scene_payload["label"], f"scene {position}.label")
+        if not scene_label or scene_label != scene_label.strip():
+            raise ValueError(f"scene {position}.label must be a non-empty trimmed string.")
+        if scene_label in seen_labels:
+            raise ValueError(f"scene labels must be unique, duplicate found: {scene_label}.")
+        seen_labels.add(scene_label)
         scenes.append(
             StoryScene(
-                index=scene_index,
+                label=scene_label,
                 text=_require_string(scene_payload["text"], f"scene {position}.text"),
                 prompt=_require_string(scene_payload["prompt"], f"scene {position}.prompt"),
                 image_path=_require_string(scene_payload["image_path"], f"scene {position}.image_path"),
@@ -86,7 +89,26 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
         Destination JSON path.
     """
 
-    serialized = json.dumps(asdict(storybook), indent=4, ensure_ascii=False)
+    serialized = json.dumps(
+        {
+            "title": storybook.title,
+            "style": storybook.style,
+            "constraints": storybook.constraints,
+            "recurring_concepts": storybook.recurring_concepts,
+            "scenes": [
+                {
+                    "label": scene.label,
+                    "text": scene.text,
+                    "prompt": scene.prompt,
+                    "image_path": scene.image_path,
+                }
+                for scene in storybook.scenes
+            ],
+        },
+        indent=4,
+        ensure_ascii=False,
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{serialized}\n", encoding="utf-8")
 
 

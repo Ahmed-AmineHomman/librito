@@ -16,14 +16,14 @@ storybooks. The full pipeline is divided into three stages:
 Current State
 =============
 
-Only **illustration generation** (stage 2) is implemented as runnable code.
+**Story segmentation** (stage 1) is implemented as an agentic workflow. The
+``segment_story.py`` script runs an LLM agent equipped with segmentation tools
+that edit a filesystem-backed draft and export a validated ``story.json``.
+The segmentation format and agent workflow are documented in
+:doc:`story_segmentation`.
 
-**Story segmentation** (stage 1) is not automated by ``librito``. It can be
-performed manually or with the help of a coding agent (such as GitHub Copilot)
-equipped with the ``segment-story`` skill shipped in
-``.agents/skills/segment-story/``. Because segmentation is inherently a creative
-task, it is well suited to LLM-based agents and may never be implemented as
-library code.
+**Illustration generation** (stage 2) is implemented as runnable code and
+consumes the exported ``story.json``.
 
 **Assembly** (stage 3) is not yet implemented.
 
@@ -45,12 +45,24 @@ API Key
 =======
 
 Illustration generation requires an API key for the configured image generation
-provider. See the :ref:`supported-providers` section in
-:doc:`illustration_generation` for the list of supported providers and their
-required environment variables.
+provider. Story segmentation also requires an LLM backend:
+
+* for Gemini-backed segmentation runs, set ``GEMINI_API_KEY`` and choose the
+  ``gemini`` provider in ``segment_story.py``;
+* for LM Studio local runs, choose the ``lms`` provider and pass ``--api-base``.
+
+See :doc:`story_segmentation` and :doc:`illustration_generation` for details.
 
 Quick Start
 ===========
+
+To create or resume a segmented story with the segmentation agent:
+
+.. code-block:: bash
+
+    python segment_story.py --label leo --story-file docs/examples/leo/story.md --provider gemini --model gemini-2.0-flash
+
+To resume an existing draft, omit ``--story-file``.
 
 Once dependencies are installed and the appropriate API key is set, generate
 illustrations for a segmented story:

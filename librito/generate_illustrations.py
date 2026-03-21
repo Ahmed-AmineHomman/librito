@@ -114,7 +114,7 @@ def generate_story_illustrations(
     if client is None:
         client = _build_default_client(config, mock=mock)
 
-    for scene in storybook.scenes:
+    for scene_position, scene in enumerate(storybook.scenes, start=1):
         if scene.image_path and (story_path.parent / scene.image_path).exists():
             continue
 
@@ -123,7 +123,7 @@ def generate_story_illustrations(
             scene,
         )
         generated_image = client.generate_image(prompt)
-        output_path = output_directory / f"scene-{scene.index:03d}.png"
+        output_path = output_directory / f"scene-{scene_position:03d}.png"
         generated_image.save(output_path)
         scene.image_path = output_path.relative_to(story_path.parent).as_posix()
         save_storybook(storybook, story_path)

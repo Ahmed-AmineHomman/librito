@@ -133,13 +133,13 @@ def _sample_story_payload() -> dict[str, object]:
         },
         "scenes": [
             {
-                "index": 1,
+                "label": "scene-001",
                 "text": "Calmio runs.",
                 "prompt": "<CALMIO> runs toward <RIVER>.",
                 "image_path": "",
             },
             {
-                "index": 2,
+                "label": "scene-002",
                 "text": "Calmio rests.",
                 "prompt": "<CALMIO> rests beside <RIVER>.",
                 "image_path": "",

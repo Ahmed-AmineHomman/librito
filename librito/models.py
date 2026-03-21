@@ -11,8 +11,8 @@ class StoryScene:
 
     Parameters
     ----------
-    index:
-        One-based position of the scene within the story.
+    label:
+        Stable unique identifier for the scene within the storybook.
     text:
         Reader-facing scene text.
     prompt:
@@ -21,7 +21,7 @@ class StoryScene:
         Relative path to the generated image within the story directory.
     """
 
-    index: int
+    label: str
     text: str
     prompt: str
     image_path: str
