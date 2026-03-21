@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import json
-import shutil
 import unittest
-from contextlib import contextmanager
 from io import StringIO
 from pathlib import Path
-from uuid import uuid4
 from unittest.mock import patch
 
-from analyse_segmentation import (
+from helpers.analyse_segmentation import (
     build_anchor_occurrence_report,
     build_storybook_skeleton_markdown,
     count_anchor_occurrences,
@@ -19,6 +16,8 @@ from analyse_segmentation import (
     main,
 )
 from librito.models import StoryScene, Storybook
+
+from tests.conftest import workspace_temporary_directory
 
 
 class ExportStorybookSkeletonTests(unittest.TestCase):
@@ -145,7 +144,7 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
     def test_export_storybook_skeleton_writes_output_file(self) -> None:
         """Exporting should write the expected markdown file when output path is given."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_path = temporary_directory / "story.json"
             output_path = temporary_directory / "out" / "storybook.md"
             story_path.write_text(json.dumps(_sample_story_payload()), encoding="utf-8")
@@ -168,7 +167,7 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
     def test_main_accepts_named_parameters(self) -> None:
         """The command-line entrypoint should accept the required named flags."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_path = temporary_directory / "story.json"
             output_path = temporary_directory / "storybook.md"
             story_path.write_text(json.dumps(_sample_story_payload()), encoding="utf-8")
@@ -223,22 +222,3 @@ def _sample_story_payload() -> dict[str, object]:
             },
         ],
     }
-
-
-@contextmanager
-def _workspace_temporary_directory() -> Path:
-    """Create a temporary directory inside the repository workspace.
-
-    Yields
-    ------
-    Path
-        Temporary directory rooted in the current workspace.
-    """
-
-    base_directory = Path.cwd() / ".tmp-tests"
-    temporary_directory = base_directory / uuid4().hex
-    temporary_directory.mkdir(parents=True, exist_ok=False)
-    try:
-        yield temporary_directory
-    finally:
-        shutil.rmtree(temporary_directory, ignore_errors=True)

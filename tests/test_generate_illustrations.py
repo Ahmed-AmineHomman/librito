@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import json
-import shutil
 import unittest
-from contextlib import contextmanager
 from pathlib import Path
-from uuid import uuid4
 
 from PIL import Image
 
-from librito.generate_illustrations import (
-    IllustrationGenerationConfig,
-    generate_story_illustrations,
-)
+from librito.generate_illustrations import generate_story_illustrations
+
+from tests.conftest import workspace_temporary_directory
 
 
 class GenerateIllustrationsTests(unittest.TestCase):
@@ -23,7 +19,7 @@ class GenerateIllustrationsTests(unittest.TestCase):
     def test_generate_story_illustrations_updates_story_and_writes_files(self) -> None:
         """Missing scene images should be generated and stored."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_path = Path(temporary_directory) / "story.json"
             story_path.write_text(json.dumps(_sample_story_payload()), encoding="utf-8")
             fake_client = _FakeGeminiClient(
@@ -36,7 +32,6 @@ class GenerateIllustrationsTests(unittest.TestCase):
             generate_story_illustrations(
                 story_path,
                 client=fake_client,
-                config=IllustrationGenerationConfig(),
             )
 
             stored_payload = json.loads(story_path.read_text(encoding="utf-8"))
@@ -54,7 +49,7 @@ class GenerateIllustrationsTests(unittest.TestCase):
     def test_generate_story_illustrations_skips_existing_scene_images(self) -> None:
         """Existing images should not be regenerated."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_directory = Path(temporary_directory)
             illustrations_directory = story_directory / "illustrations"
             illustrations_directory.mkdir()
@@ -71,7 +66,6 @@ class GenerateIllustrationsTests(unittest.TestCase):
             generate_story_illustrations(
                 story_path,
                 client=fake_client,
-                config=IllustrationGenerationConfig(),
             )
 
             stored_payload = json.loads(story_path.read_text(encoding="utf-8"))
@@ -146,22 +140,3 @@ def _sample_story_payload() -> dict[str, object]:
             },
         ],
     }
-
-
-@contextmanager
-def _workspace_temporary_directory() -> Path:
-    """Create a temporary directory inside the repository workspace.
-
-    Yields
-    ------
-    Path
-        Temporary directory rooted in the current workspace.
-    """
-
-    base_directory = Path.cwd() / ".tmp-tests"
-    temporary_directory = base_directory / uuid4().hex
-    temporary_directory.mkdir(parents=True, exist_ok=False)
-    try:
-        yield temporary_directory
-    finally:
-        shutil.rmtree(temporary_directory, ignore_errors=True)

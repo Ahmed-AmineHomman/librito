@@ -69,13 +69,13 @@ illustrations for a segmented story:
 
 .. code-block:: bash
 
-    python generate_illustrations.py path/to/story.json
+    python illustrate_story.py --storybook path/to/story.json
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-    .\.venv\Scripts\python.exe generate_illustrations.py .\path\to\story.json
+    .\.venv\Scripts\python.exe illustrate_story.py --storybook .\path\to\story.json
 
 A sample segmented story is available at ``docs/examples/leo/story.json``.
 

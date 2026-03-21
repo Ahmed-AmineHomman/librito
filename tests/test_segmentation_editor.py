@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import shutil
 import unittest
-from contextlib import contextmanager
 from pathlib import Path
-from uuid import uuid4
 
 from librito.segmentation.editor import StorybookEditor
 from librito.segmentation.session import SegmentationSession
+
+from tests.conftest import workspace_temporary_directory
 
 
 class StorybookEditorTests(unittest.TestCase):
@@ -19,7 +18,7 @@ class StorybookEditorTests(unittest.TestCase):
     def test_add_scene_generates_default_label_and_respects_position(self) -> None:
         """New scenes should receive default labels and 1-based insertions."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             session = _build_session(temporary_directory)
             editor = StorybookEditor(session)
 
@@ -42,7 +41,7 @@ class StorybookEditorTests(unittest.TestCase):
     def test_rename_concept_updates_prompt_references(self) -> None:
         """Renaming a concept should update scene prompt references."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             session = _build_session(temporary_directory)
             editor = StorybookEditor(session)
             editor.add_concept("<DOG>", "A fluffy dog")
@@ -63,7 +62,7 @@ class StorybookEditorTests(unittest.TestCase):
     def test_check_prompt_consistency_reports_current_findings(self) -> None:
         """Undefined, unused, and single-scene anchors should be reported."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             session = _build_session(temporary_directory)
             editor = StorybookEditor(session)
             editor.add_concept("<DOG>", "A fluffy dog")
@@ -84,7 +83,7 @@ class StorybookEditorTests(unittest.TestCase):
     def test_export_storybook_requires_prompt_consistency(self) -> None:
         """Export should fail until prompt-consistency findings are resolved."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             session = _build_session(temporary_directory)
             editor = StorybookEditor(session)
             editor.set_title("Calmio")
@@ -132,22 +131,3 @@ def _build_session(base_directory: Path) -> SegmentationSession:
         draft_path=base_directory / "story.segmentation.draft.json",
         export_path=base_directory / "story.json",
     )
-
-
-@contextmanager
-def _workspace_temporary_directory() -> Path:
-    """Create a temporary directory inside the repository workspace.
-
-    Yields
-    ------
-    Path
-        Temporary directory rooted in the current workspace.
-    """
-
-    base_directory = Path.cwd() / ".tmp-tests"
-    temporary_directory = base_directory / uuid4().hex
-    temporary_directory.mkdir(parents=True, exist_ok=False)
-    try:
-        yield temporary_directory
-    finally:
-        shutil.rmtree(temporary_directory, ignore_errors=True)

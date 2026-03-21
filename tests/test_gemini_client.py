@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 
-from librito.gemini_client import (
+from librito.image_clients.gemini import (
     GeminiImageClient,
     GeminiImageClientConfig,
     GeminiImageClientError,
@@ -18,10 +18,10 @@ from librito.gemini_client import (
 class GeminiImageClientTests(unittest.TestCase):
     """Validate SDK-backed image generation."""
 
-    @patch("librito.gemini_client.types.ImageConfig")
-    @patch("librito.gemini_client.types.GenerateContentConfig")
-    @patch("librito.gemini_client.types.HttpOptions")
-    @patch("librito.gemini_client.genai.Client")
+    @patch("librito.image_clients.gemini.types.ImageConfig")
+    @patch("librito.image_clients.gemini.types.GenerateContentConfig")
+    @patch("librito.image_clients.gemini.types.HttpOptions")
+    @patch("librito.image_clients.gemini.genai.Client")
     def test_generate_image_returns_first_inline_image(
         self,
         client_class: Mock,
@@ -55,7 +55,7 @@ class GeminiImageClientTests(unittest.TestCase):
         fake_models.generate_content.assert_called_once()
         http_options_class.assert_called_once_with(timeout=60000)
 
-    @patch("librito.gemini_client.genai.Client")
+    @patch("librito.image_clients.gemini.genai.Client")
     def test_sdk_client_errors_are_wrapped(self, client_class: Mock) -> None:
         """SDK initialization failures should surface as client errors."""
 

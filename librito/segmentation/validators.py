@@ -44,29 +44,26 @@ def count_concept_occurrences(storybook: Storybook) -> dict[str, dict[str, objec
         distinct scenes using it, and the ordered list of those scene labels.
     """
 
-    counts: dict[str, dict[str, object]] = {
-        anchor: {
-            "occurrence_count": 0,
-            "scene_count": 0,
-            "scene_labels": [],
-        }
-        for anchor in sorted(storybook.recurring_concepts)
-    }
+    occurrence_counts: dict[str, int] = {anchor: 0 for anchor in storybook.recurring_concepts}
+    scene_labels: dict[str, list[str]] = {anchor: [] for anchor in storybook.recurring_concepts}
 
     for scene in storybook.scenes:
         anchors_in_scene = _ANCHOR_PATTERN.findall(scene.prompt)
-        unique_scene_anchors = set(anchors_in_scene)
         for anchor in anchors_in_scene:
-            if anchor in counts:
-                counts[anchor]["occurrence_count"] = int(counts[anchor]["occurrence_count"]) + 1
-        for anchor in sorted(unique_scene_anchors):
-            if anchor in counts:
-                scene_labels = list(counts[anchor]["scene_labels"])
-                scene_labels.append(scene.label)
-                counts[anchor]["scene_labels"] = scene_labels
-                counts[anchor]["scene_count"] = len(scene_labels)
+            if anchor in occurrence_counts:
+                occurrence_counts[anchor] += 1
+        for anchor in sorted(set(anchors_in_scene)):
+            if anchor in scene_labels:
+                scene_labels[anchor].append(scene.label)
 
-    return counts
+    return {
+        anchor: {
+            "occurrence_count": occurrence_counts[anchor],
+            "scene_count": len(scene_labels[anchor]),
+            "scene_labels": scene_labels[anchor],
+        }
+        for anchor in sorted(storybook.recurring_concepts)
+    }
 
 
 def check_prompt_consistency(storybook: Storybook) -> dict[str, object]:

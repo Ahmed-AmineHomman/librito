@@ -186,15 +186,13 @@ def _build_model(arguments: argparse.Namespace) -> str | LiteLlm:
     )
 
 
-def _build_prompt(label: str, session: SegmentationSession) -> str:
+def _build_prompt(label: str) -> str:
     """Build the single user prompt used to drive the segmentation run.
 
     Parameters
     ----------
     label:
         Story label under the database directory.
-    session:
-        Filesystem-backed segmentation session.
 
     Returns
     -------
@@ -204,9 +202,6 @@ def _build_prompt(label: str, session: SegmentationSession) -> str:
 
     return (
         f"Segment the story stored for label '{label}'. "
-        f"The source story is at '{session.story_path}'. "
-        f"The mutable draft is at '{session.draft_path}'. "
-        f"The final export target is '{session.export_path}'. "
         "Inspect the story and current draft with tools, build or refine the segmentation, "
         "validate prompt consistency, export the final storybook, and then summarize the result."
     )
@@ -290,7 +285,7 @@ async def _run() -> int:
     )
     user_message = types.Content(
         role="user",
-        parts=[types.Part(text=_build_prompt(arguments.label, session))],
+        parts=[types.Part(text=_build_prompt(arguments.label))],
     )
 
     final_text: str | None = None

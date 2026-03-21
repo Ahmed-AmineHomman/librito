@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-import shutil
 import unittest
-from contextlib import contextmanager
 from pathlib import Path
-from uuid import uuid4
 
 from librito.story_io import load_storybook, save_storybook
+
+from tests.conftest import workspace_temporary_directory
 
 
 class StoryIoTests(unittest.TestCase):
@@ -18,7 +17,7 @@ class StoryIoTests(unittest.TestCase):
     def test_load_storybook_reads_expected_structure(self) -> None:
         """A valid storybook should parse into typed fields."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_path = Path(temporary_directory) / "story.json"
             story_path.write_text(json.dumps(_sample_story_payload()), encoding="utf-8")
 
@@ -36,7 +35,7 @@ class StoryIoTests(unittest.TestCase):
         payload = _sample_story_payload()
         payload["extra"] = "not allowed"
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_path = Path(temporary_directory) / "story.json"
             story_path.write_text(json.dumps(payload), encoding="utf-8")
 
@@ -46,7 +45,7 @@ class StoryIoTests(unittest.TestCase):
     def test_save_storybook_persists_updated_image_path(self) -> None:
         """Saving should write the current story state back to JSON."""
 
-        with _workspace_temporary_directory() as temporary_directory:
+        with workspace_temporary_directory() as temporary_directory:
             story_path = Path(temporary_directory) / "story.json"
             story_path.write_text(json.dumps(_sample_story_payload()), encoding="utf-8")
             storybook = load_storybook(story_path)
@@ -83,22 +82,3 @@ def _sample_story_payload() -> dict[str, object]:
             }
         ],
     }
-
-
-@contextmanager
-def _workspace_temporary_directory() -> Path:
-    """Create a temporary directory inside the repository workspace.
-
-    Yields
-    ------
-    Path
-        Temporary directory rooted in the current workspace.
-    """
-
-    base_directory = Path.cwd() / ".tmp-tests"
-    temporary_directory = base_directory / uuid4().hex
-    temporary_directory.mkdir(parents=True, exist_ok=False)
-    try:
-        yield temporary_directory
-    finally:
-        shutil.rmtree(temporary_directory, ignore_errors=True)
