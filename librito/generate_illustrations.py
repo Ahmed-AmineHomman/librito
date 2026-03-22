@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -12,7 +13,10 @@ from librito.image_clients.mock import MockImageClient, MockImageClientConfig
 from librito.prompt_builder import build_scene_prompt
 from librito.story_io import load_storybook, save_storybook
 
+logger = logging.getLogger(__name__)
+
 _OUTPUT_DIRECTORY_NAME = "illustrations"
+_STORYBOOK_FILENAME = "story.json"
 _GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
 
 
@@ -20,7 +24,10 @@ def _build_default_client(
     *,
     mock: bool = False,
     provider: str = "gemini",
-    model: str | None = None,
+    checkpoint: str | None = None,
+    diffusion_model: str | None = None,
+    clip: str | None = None,
+    vae: str | None = None,
     aspect_ratio: str = "1:1",
     image_size: str = "1K",
 ) -> ImageClient:
@@ -33,13 +40,19 @@ def _build_default_client(
         instead of calling a real API.
     provider:
         Image generation provider (``"gemini"`` or ``"comfyui"``).
-    model:
-        Model identifier passed to the chosen provider.  Required for
-        ``"comfyui"``; optional for ``"gemini"`` (falls back to its default).
+    checkpoint:
+        Checkpoint filename for the ComfyUI checkpoint workflow.
+    diffusion_model:
+        UNET model filename for the ComfyUI diffusion workflow.
+    clip:
+        CLIP model filename for the ComfyUI diffusion workflow.
+    vae:
+        VAE model filename for the ComfyUI diffusion workflow.
     aspect_ratio:
         Requested image aspect ratio.
     image_size:
-        Requested overall image resolution (``"1K"`` or ``"2K"``).
+        Requested overall image resolution (``"0.5K"``, ``"1K"``, or
+        ``"2K"``).
 
     Returns
     -------
@@ -48,16 +61,27 @@ def _build_default_client(
     """
 
     if mock:
+        logger.info("Using mock image client.")
         return MockImageClient(MockImageClientConfig(
             aspect_ratio=aspect_ratio,
             image_size=image_size,
         ))
 
     if provider == "comfyui":
-        if not model:
-            raise RuntimeError("A --model is required when using the ComfyUI provider.")
+        if not checkpoint and not (diffusion_model and clip and vae):
+            raise RuntimeError(
+                "ComfyUI provider requires either --checkpoint or all three of "
+                "--diffusion-model, --clip, and --vae."
+            )
+        logger.info(
+            "Using ComfyUI provider (%s mode).",
+            "checkpoint" if checkpoint else "diffusion",
+        )
         return ComfyUIImageClient(ComfyUIImageClientConfig(
-            model=model,
+            checkpoint=checkpoint or "",
+            diffusion_model=diffusion_model or "",
+            clip=clip or "",
+            vae=vae or "",
             aspect_ratio=aspect_ratio,
             image_size=image_size,
         ))
@@ -67,24 +91,28 @@ def _build_default_client(
     if not api_key:
         raise RuntimeError(f"Missing required environment variable: {_GEMINI_API_KEY_ENV_VAR}.")
 
+    logger.info("Using Gemini provider.")
     config_kwargs: dict[str, str] = {
         "api_key": api_key,
         "aspect_ratio": aspect_ratio,
         "image_size": image_size,
     }
-    if model:
-        config_kwargs["model"] = model
+    if checkpoint:
+        config_kwargs["model"] = checkpoint
 
     return GeminiImageClient(GeminiImageClientConfig(**config_kwargs))
 
 
 def generate_story_illustrations(
-    story_path: Path,
+    story_directory: Path,
     client: ImageClient | None = None,
     *,
     mock: bool = False,
     provider: str = "gemini",
-    model: str | None = None,
+    checkpoint: str | None = None,
+    diffusion_model: str | None = None,
+    clip: str | None = None,
+    vae: str | None = None,
     aspect_ratio: str = "1:1",
     image_size: str = "1K",
 ) -> None:
@@ -92,40 +120,66 @@ def generate_story_illustrations(
 
     Parameters
     ----------
-    story_path:
-        Path to the segmented ``story.json`` file.
+    story_directory:
+        Path to the story folder containing ``story.json``.
     client:
         Optional preconfigured image client used mainly for tests.
     mock:
         When ``True`` and no *client* is provided, use the mock image client
-        instead of the real Gemini client.
+        instead of the real API.
     provider:
         Image generation provider (``"gemini"`` or ``"comfyui"``).
-    model:
-        Model identifier passed to the chosen provider.
+    checkpoint:
+        Checkpoint filename for the ComfyUI checkpoint workflow.
+    diffusion_model:
+        UNET model filename for the ComfyUI diffusion workflow.
+    clip:
+        CLIP model filename for the ComfyUI diffusion workflow.
+    vae:
+        VAE model filename for the ComfyUI diffusion workflow.
     aspect_ratio:
         Requested image aspect ratio.
     image_size:
         Requested overall image resolution.
     """
 
+    story_path = story_directory / _STORYBOOK_FILENAME
+    logger.info("Loading storybook from %s.", story_path)
     storybook = load_storybook(story_path)
-    output_directory = story_path.parent / _OUTPUT_DIRECTORY_NAME
+    output_directory = story_directory / _OUTPUT_DIRECTORY_NAME
     output_directory.mkdir(parents=True, exist_ok=True)
 
     if client is None:
         client = _build_default_client(
             mock=mock,
             provider=provider,
-            model=model,
+            checkpoint=checkpoint,
+            diffusion_model=diffusion_model,
+            clip=clip,
+            vae=vae,
             aspect_ratio=aspect_ratio,
             image_size=image_size,
         )
 
+    total_scenes = len(storybook.scenes)
+    logger.info("Starting illustration generation for %d scene(s).", total_scenes)
+
     for scene_position, scene in enumerate(storybook.scenes, start=1):
-        if scene.image_path and (story_path.parent / scene.image_path).exists():
+        if scene.image_path and (story_directory / scene.image_path).exists():
+            logger.info(
+                "Scene %d/%d (%s): skipping (image already exists).",
+                scene_position,
+                total_scenes,
+                scene.label,
+            )
             continue
 
+        logger.info(
+            "Scene %d/%d (%s): generating illustration...",
+            scene_position,
+            total_scenes,
+            scene.label,
+        )
         prompt = build_scene_prompt(
             storybook,
             scene,
@@ -133,5 +187,14 @@ def generate_story_illustrations(
         generated_image = client.generate_image(prompt)
         output_path = output_directory / f"scene-{scene_position:03d}.png"
         generated_image.save(output_path)
-        scene.image_path = output_path.relative_to(story_path.parent).as_posix()
+        scene.image_path = output_path.relative_to(story_directory).as_posix()
         save_storybook(storybook, story_path)
+        logger.info(
+            "Scene %d/%d (%s): saved to %s.",
+            scene_position,
+            total_scenes,
+            scene.label,
+            scene.image_path,
+        )
+
+    logger.info("Illustration generation complete.")

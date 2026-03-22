@@ -16,6 +16,11 @@ class ComputeDimensionsTests(unittest.TestCase):
 
         self.assertEqual(compute_dimensions("1:1", "1K"), (1024, 1024))
 
+    def test_square_half_k(self) -> None:
+        """1:1 at 0.5K should yield 512×512."""
+
+        self.assertEqual(compute_dimensions("1:1", "0.5K"), (512, 512))
+
     def test_landscape_16_9_1k(self) -> None:
         """16:9 at 1K should yield 1024×576."""
 
@@ -56,7 +61,7 @@ class MockImageClientTests(unittest.TestCase):
     def test_generate_image_returns_correct_dimensions(self) -> None:
         """The generated image should match the configured size and ratio."""
 
-        client = MockImageClient(MockImageClientConfig(aspect_ratio="16:9", image_size="512"))
+        client = MockImageClient(MockImageClientConfig(aspect_ratio="16:9", image_size="0.5K"))
         image = client.generate_image("any prompt")
 
         self.assertEqual(image.size, (512, 288))
@@ -73,7 +78,7 @@ class MockImageClientTests(unittest.TestCase):
     def test_generate_image_produces_non_uniform_pixels(self) -> None:
         """The noise image should not be a solid color."""
 
-        client = MockImageClient(MockImageClientConfig(image_size="512"))
+        client = MockImageClient(MockImageClientConfig(image_size="0.5K"))
         image = client.generate_image("test")
         raw = image.tobytes()
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import re
 import sys
 from collections import Counter
@@ -13,7 +14,10 @@ from librito.models import Storybook
 from librito.prompt_builder import expand_prompt_anchors
 from librito.story_io import load_storybook
 
+logger = logging.getLogger(__name__)
+
 _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
+_STORYBOOK_FILENAME = "story.json"
 
 
 def count_anchor_occurrences(storybook: Storybook) -> dict[str, int]:
@@ -119,7 +123,7 @@ def build_storybook_skeleton_markdown(
 
 
 def export_storybook_skeleton(
-    input_json: Path,
+    story_directory: Path,
     output_filepath: Path | None = None,
     scene_labels: list[str] | None = None,
 ) -> None:
@@ -127,14 +131,16 @@ def export_storybook_skeleton(
 
     Parameters
     ----------
-    input_json:
-        Path to the segmented story JSON file.
+    story_directory:
+        Path to the story folder containing ``story.json``.
     output_filepath:
         Optional destination path for the generated Markdown file.
     scene_labels:
         Optional scene labels to include.
     """
 
+    input_json = story_directory / _STORYBOOK_FILENAME
+    logger.info("Loading storybook from %s.", input_json)
     storybook = load_storybook(input_json)
     report = build_anchor_occurrence_report(storybook)
     markdown = build_storybook_skeleton_markdown(storybook, scene_labels)
@@ -165,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--storybook",
         required=True,
         type=Path,
-        help="Path to the story JSON file.",
+        help="Path to the story folder (must contain story.json).",
     )
     parser.add_argument(
         "--output-file",

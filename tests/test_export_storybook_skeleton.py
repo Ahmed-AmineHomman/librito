@@ -151,7 +151,7 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
 
             stdout_buffer = StringIO()
             with patch("sys.stdout", stdout_buffer):
-                export_storybook_skeleton(story_path, output_path)
+                export_storybook_skeleton(temporary_directory, output_path)
 
             markdown = output_path.read_text(encoding="utf-8")
             stdout_text = stdout_buffer.getvalue()
@@ -177,7 +177,7 @@ class ExportStorybookSkeletonTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "--storybook",
-                        str(story_path),
+                        str(temporary_directory),
                         "--output-file",
                         str(output_path),
                     ]

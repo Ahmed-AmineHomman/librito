@@ -30,14 +30,14 @@ class GenerateIllustrationsTests(unittest.TestCase):
             )
 
             generate_story_illustrations(
-                story_path,
+                Path(temporary_directory),
                 client=fake_client,
             )
 
             stored_payload = json.loads(story_path.read_text(encoding="utf-8"))
-            with Image.open(story_path.parent / "illustrations" / "scene-001.png") as first_image:
+            with Image.open(Path(temporary_directory) / "illustrations" / "scene-001.png") as first_image:
                 first_image_size = first_image.size
-            with Image.open(story_path.parent / "illustrations" / "scene-002.png") as second_image:
+            with Image.open(Path(temporary_directory) / "illustrations" / "scene-002.png") as second_image:
                 second_image_size = second_image.size
 
         self.assertEqual(len(fake_client.prompts), 2)
@@ -64,7 +64,7 @@ class GenerateIllustrationsTests(unittest.TestCase):
             fake_client = _FakeGeminiClient([Image.new("RGB", (2, 2), color="blue")])
 
             generate_story_illustrations(
-                story_path,
+                story_directory,
                 client=fake_client,
             )
 

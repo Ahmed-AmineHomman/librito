@@ -1,14 +1,20 @@
 """Run the story-segmentation agent on a filesystem-backed draft.
 
-The script stores each story under ``./database/<label>/`` by default.
+The ``--storybook`` argument points to a story folder (e.g.
+``./database/my-story/``).  The script expects the following convention
+inside that folder:
+
+* ``story.md`` — full source story text,
+* ``story.json`` — exported storybook (segmentation output),
+* ``story.segmentation.draft.json`` — intermediate draft file.
 
 Story loading behavior:
 
 * when ``--story-file`` is provided, its content is copied into
-  ``./database/<label>/story.md`` before the agent starts, overriding any
+  ``<storybook>/story.md`` before the agent starts, overriding any
   existing file there;
 * when ``--story-file`` is omitted, the script expects an existing
-  ``./database/<label>/story.md`` file and loads the source story from it;
+  ``<storybook>/story.md`` file and loads the source story from it;
 * the script raises if the expected story file is missing, unreadable, or empty.
 
 Provider-specific authentication:
@@ -22,7 +28,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import os
+import sys
 from pathlib import Path
 
 from google.adk.agents import LlmAgent
@@ -33,8 +41,9 @@ from google.genai import types
 from librito.segmentation.session import SegmentationSession
 from librito.segmentation.tools import build_toolset
 
+logger = logging.getLogger(__name__)
+
 _APP_NAME = "librito_story_segmentation"
-_DEFAULT_DATABASE_ROOT = Path("database")
 _DEFAULT_EXPORT_FILENAME = "story.json"
 _DEFAULT_DRAFT_FILENAME = "story.segmentation.draft.json"
 _DEFAULT_STORY_FILENAME = "story.md"
@@ -81,18 +90,17 @@ def _parse_arguments() -> argparse.Namespace:
     """
 
     parser = argparse.ArgumentParser(description="Run the story-segmentation agent.")
-    parser.add_argument("--label", required=True, help="Story label used under ./database.")
+    parser.add_argument(
+        "--storybook",
+        required=True,
+        type=Path,
+        help="Path to the story folder (must contain or will receive story.md).",
+    )
     parser.add_argument(
         "--story-file",
         type=Path,
         default=None,
-        help="Optional source story file. When provided, it overrides ./database/<label>/story.md before the run.",
-    )
-    parser.add_argument(
-        "--database-root",
-        type=Path,
-        default=_DEFAULT_DATABASE_ROOT,
-        help="Database root directory containing story folders. Defaults to ./database.",
+        help="Optional source story file. When provided, it overrides <storybook>/story.md before the run.",
     )
     parser.add_argument(
         "--provider",
@@ -129,13 +137,15 @@ def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
         Ready-to-use segmentation session.
     """
 
-    story_directory = arguments.database_root / arguments.label
+    story_directory = arguments.storybook
     story_directory.mkdir(parents=True, exist_ok=True)
+    logger.info("Story directory: %s.", story_directory)
 
     story_path = story_directory / _DEFAULT_STORY_FILENAME
     if arguments.story_file is not None:
         story_text = _read_story_text(arguments.story_file)
         story_path.write_text(story_text, encoding="utf-8")
+        logger.info("Copied story text from %s to %s.", arguments.story_file, story_path)
     elif not story_path.exists():
         raise RuntimeError(
             f"Missing source story file: {story_path}. "
@@ -143,6 +153,7 @@ def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
         )
     else:
         _read_story_text(story_path)
+        logger.info("Loaded existing story from %s.", story_path)
 
     session = SegmentationSession(
         story_path=story_path,
@@ -150,6 +161,7 @@ def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
         export_path=story_directory / _DEFAULT_EXPORT_FILENAME,
     )
     session.ensure_draft_exists()
+    logger.info("Segmentation session ready (draft: %s, export: %s).", session.draft_path, session.export_path)
     return session
 
 
@@ -186,13 +198,13 @@ def _build_model(arguments: argparse.Namespace) -> str | LiteLlm:
     )
 
 
-def _build_prompt(label: str) -> str:
+def _build_prompt(story_directory: Path) -> str:
     """Build the single user prompt used to drive the segmentation run.
 
     Parameters
     ----------
-    label:
-        Story label under the database directory.
+    story_directory:
+        Story folder path.
 
     Returns
     -------
@@ -200,6 +212,7 @@ def _build_prompt(label: str) -> str:
         Initial user prompt sent to the agent.
     """
 
+    label = story_directory.name
     return (
         f"Segment the story stored for label '{label}'. "
         "Inspect the story and current draft with tools, build or refine the segmentation, "
@@ -265,8 +278,18 @@ async def _run() -> int:
     """
 
     arguments = _parse_arguments()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        stream=sys.stdout,
+    )
+
+    logger.info("Starting segmentation for '%s' (provider: %s, model: %s).",
+                arguments.storybook, arguments.provider, arguments.model)
     session = _prepare_session(arguments)
 
+    logger.info("Building segmentation agent...")
     agent = LlmAgent(
         name="segment_story_agent",
         model=_build_model(arguments),
@@ -285,9 +308,10 @@ async def _run() -> int:
     )
     user_message = types.Content(
         role="user",
-        parts=[types.Part(text=_build_prompt(arguments.label))],
+        parts=[types.Part(text=_build_prompt(arguments.storybook))],
     )
 
+    logger.info("Running segmentation agent...")
     final_text: str | None = None
     async for event in runner.run_async(
         user_id=arguments.user_id,
@@ -303,8 +327,10 @@ async def _run() -> int:
 
     if final_text is not None:
         print(final_text)
+        logger.info("Segmentation complete.")
     elif session.export_path.exists():
         print(f"Exported storybook to {session.export_path}.")
+        logger.info("Exported storybook to %s.", session.export_path)
     else:
         raise RuntimeError("The agent finished without exporting a storybook.")
     return 0

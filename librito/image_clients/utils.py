@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 _SIZE_MAP: dict[str, int] = {
+    "0.5K": 512,
     "1K": 1024,
     "2K": 2048,
-    "512": 512,
 }
 
 _ASPECT_RATIO_MAP: dict[str, tuple[int, int]] = {
