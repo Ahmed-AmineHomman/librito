@@ -1,8 +1,8 @@
 {
   "3": {
     "inputs": {
-      "seed": 1072482242240552,
-      "steps": 20,
+      "seed": 0,
+      "steps": 25,
       "cfg": 7,
       "sampler_name": "dpmpp_2m_sde_gpu",
       "scheduler": "karras",
@@ -64,7 +64,7 @@
   },
   "7": {
     "inputs": {
-      "text": "text, watermark, poor quality, ugly, bad art, missing fingers, bad anatomy, blurry, horror, furry, anthro, bad lighting, plain",
+      "text": "",
       "clip": [
         "4",
         1
@@ -93,15 +93,14 @@
   },
   "9": {
     "inputs": {
-      "filename_prefix": "ComfyUI",
       "images": [
         "8",
         0
       ]
     },
-    "class_type": "SaveImage",
+    "class_type": "PreviewImage",
     "_meta": {
-      "title": "Save Image"
+      "title": "Preview Image"
     }
   }
 }
