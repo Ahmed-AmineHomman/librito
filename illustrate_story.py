@@ -33,6 +33,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Path to the story JSON file.",
     )
     parser.add_argument(
+        "--provider",
+        choices=["gemini", "comfyui"],
+        default="gemini",
+        help="Image generation provider (default: gemini).",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help=(
+            "Model identifier for the chosen provider. "
+            "Required for comfyui (checkpoint filename). "
+            "Optional for gemini (defaults to its built-in default)."
+        ),
+    )
+    parser.add_argument(
+        "--aspect-ratio",
+        default="1:1",
+        help="Image aspect ratio (default: 1:1).",
+    )
+    parser.add_argument(
+        "--resolution",
+        default="1K",
+        help='Overall image resolution, e.g. "1K" or "2K" (default: 1K).',
+    )
+    parser.add_argument(
         "--mock-image-generation",
         action="store_true",
         default=False,
@@ -42,6 +67,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     generate_story_illustrations(
         arguments.storybook,
         mock=arguments.mock_image_generation,
+        provider=arguments.provider,
+        model=arguments.model,
+        aspect_ratio=arguments.aspect_ratio,
+        image_size=arguments.resolution,
     )
     return 0
 

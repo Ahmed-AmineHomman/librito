@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from librito.image_clients.mock import MockImageClient, MockImageClientConfig, _compute_dimensions
+from librito.image_clients.mock import MockImageClient, MockImageClientConfig
+from librito.image_clients.utils import compute_dimensions
 
 
 class ComputeDimensionsTests(unittest.TestCase):
@@ -13,26 +14,26 @@ class ComputeDimensionsTests(unittest.TestCase):
     def test_square_1k(self) -> None:
         """1:1 at 1K should yield 1024×1024."""
 
-        self.assertEqual(_compute_dimensions("1:1", "1K"), (1024, 1024))
+        self.assertEqual(compute_dimensions("1:1", "1K"), (1024, 1024))
 
     def test_landscape_16_9_1k(self) -> None:
         """16:9 at 1K should yield 1024×576."""
 
-        width, height = _compute_dimensions("16:9", "1K")
+        width, height = compute_dimensions("16:9", "1K")
         self.assertEqual(width, 1024)
         self.assertEqual(height, 576)
 
     def test_portrait_9_16_1k(self) -> None:
         """9:16 at 1K should yield 576×1024."""
 
-        width, height = _compute_dimensions("9:16", "1K")
+        width, height = compute_dimensions("9:16", "1K")
         self.assertEqual(width, 576)
         self.assertEqual(height, 1024)
 
     def test_3_4_2k(self) -> None:
         """3:4 at 2K should yield 1536×2048."""
 
-        width, height = _compute_dimensions("3:4", "2K")
+        width, height = compute_dimensions("3:4", "2K")
         self.assertEqual(width, 1536)
         self.assertEqual(height, 2048)
 
@@ -40,13 +41,13 @@ class ComputeDimensionsTests(unittest.TestCase):
         """An unknown aspect ratio should raise ValueError."""
 
         with self.assertRaisesRegex(ValueError, "Unsupported aspect ratio"):
-            _compute_dimensions("5:3", "1K")
+            compute_dimensions("5:3", "1K")
 
     def test_unsupported_image_size_raises(self) -> None:
         """An unknown size label should raise ValueError."""
 
         with self.assertRaisesRegex(ValueError, "Unsupported image size"):
-            _compute_dimensions("1:1", "4K")
+            compute_dimensions("1:1", "4K")
 
 
 class MockImageClientTests(unittest.TestCase):

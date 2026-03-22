@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from librito.image_clients import ImageClient
+from librito.image_clients.comfyui import ComfyUIImageClient, ComfyUIImageClientConfig
 from librito.image_clients.gemini import GeminiImageClient, GeminiImageClientConfig
 from librito.image_clients.mock import MockImageClient, MockImageClientConfig
 from librito.prompt_builder import build_scene_prompt
@@ -15,7 +16,14 @@ _OUTPUT_DIRECTORY_NAME = "illustrations"
 _GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
 
 
-def _build_default_client(*, mock: bool = False) -> ImageClient:
+def _build_default_client(
+    *,
+    mock: bool = False,
+    provider: str = "gemini",
+    model: str | None = None,
+    aspect_ratio: str = "1:1",
+    image_size: str = "1K",
+) -> ImageClient:
     """Build the default image generation client.
 
     Parameters
@@ -23,6 +31,15 @@ def _build_default_client(*, mock: bool = False) -> ImageClient:
     mock:
         When ``True``, return a mock client that produces pixel-noise images
         instead of calling a real API.
+    provider:
+        Image generation provider (``"gemini"`` or ``"comfyui"``).
+    model:
+        Model identifier passed to the chosen provider.  Required for
+        ``"comfyui"``; optional for ``"gemini"`` (falls back to its default).
+    aspect_ratio:
+        Requested image aspect ratio.
+    image_size:
+        Requested overall image resolution (``"1K"`` or ``"2K"``).
 
     Returns
     -------
@@ -31,12 +48,34 @@ def _build_default_client(*, mock: bool = False) -> ImageClient:
     """
 
     if mock:
-        return MockImageClient()
+        return MockImageClient(MockImageClientConfig(
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+        ))
 
+    if provider == "comfyui":
+        if not model:
+            raise RuntimeError("A --model is required when using the ComfyUI provider.")
+        return ComfyUIImageClient(ComfyUIImageClientConfig(
+            model=model,
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+        ))
+
+    # Default: Gemini
     api_key = os.getenv(_GEMINI_API_KEY_ENV_VAR)
     if not api_key:
         raise RuntimeError(f"Missing required environment variable: {_GEMINI_API_KEY_ENV_VAR}.")
-    return GeminiImageClient(GeminiImageClientConfig(api_key=api_key))
+
+    config_kwargs: dict[str, str] = {
+        "api_key": api_key,
+        "aspect_ratio": aspect_ratio,
+        "image_size": image_size,
+    }
+    if model:
+        config_kwargs["model"] = model
+
+    return GeminiImageClient(GeminiImageClientConfig(**config_kwargs))
 
 
 def generate_story_illustrations(
@@ -44,6 +83,10 @@ def generate_story_illustrations(
     client: ImageClient | None = None,
     *,
     mock: bool = False,
+    provider: str = "gemini",
+    model: str | None = None,
+    aspect_ratio: str = "1:1",
+    image_size: str = "1K",
 ) -> None:
     """Generate all missing illustrations for a segmented story.
 
@@ -56,6 +99,14 @@ def generate_story_illustrations(
     mock:
         When ``True`` and no *client* is provided, use the mock image client
         instead of the real Gemini client.
+    provider:
+        Image generation provider (``"gemini"`` or ``"comfyui"``).
+    model:
+        Model identifier passed to the chosen provider.
+    aspect_ratio:
+        Requested image aspect ratio.
+    image_size:
+        Requested overall image resolution.
     """
 
     storybook = load_storybook(story_path)
@@ -63,7 +114,13 @@ def generate_story_illustrations(
     output_directory.mkdir(parents=True, exist_ok=True)
 
     if client is None:
-        client = _build_default_client(mock=mock)
+        client = _build_default_client(
+            mock=mock,
+            provider=provider,
+            model=model,
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+        )
 
     for scene_position, scene in enumerate(storybook.scenes, start=1):
         if scene.image_path and (story_path.parent / scene.image_path).exists():
