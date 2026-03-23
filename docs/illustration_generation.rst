@@ -17,13 +17,13 @@ From the repository root:
 
 .. code-block:: bash
 
-   python illustrate_story.py --storybook path/to/story.json
+   python illustrate_story.py --storybook path/to/story-folder
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-   .\.venv\Scripts\python.exe illustrate_story.py --storybook .\path\to\story.json
+   .\.venv\Scripts\python.exe illustrate_story.py --storybook .\path\to\story-folder
 
 What the Command Does
 ---------------------
@@ -120,11 +120,11 @@ generation rules.
 Output Layout
 -------------
 
-For a story stored at ``path/to/story.json``, a successful run produces:
+For a story stored at ``path/to/story-folder``, a successful run produces:
 
 .. code-block:: text
 
-   path/to/
+   path/to/story-folder/
    ├── illustrations/
    │   ├── scene-001.png
    │   ├── scene-002.png
@@ -148,7 +148,7 @@ Supported Providers
 -------------------
 
 The table below lists the currently supported image generation APIs, their
-default models, and the environment variable required by each.
+default models, and the environment variables used by each.
 
 .. list-table::
    :header-rows: 1
@@ -156,28 +156,33 @@ default models, and the environment variable required by each.
 
    * - Provider
      - Default Model
-     - Env Variable
-     - Default Settings
+     - Env Variables
+      - Default Settings
    * - Google Gemini
      - ``gemini-3.1-flash-image-preview``
      - ``GEMINI_API_KEY``
      - 1:1 aspect ratio, 1K image size
+   * - ComfyUI
+     - User-selected checkpoint or diffusion assets
+     - ``COMFYUI_API_URL`` and optional ``COMFYUI_API_KEY``
+     - 1:1 aspect ratio, 1K image size
 
-Set the appropriate variable before running:
+Set the appropriate variables before running:
 
 .. code-block:: bash
 
    export GEMINI_API_KEY="your-api-key"
+   export COMFYUI_API_URL="http://127.0.0.1:8188"
 
 On Windows PowerShell:
 
 .. code-block:: powershell
 
    $env:GEMINI_API_KEY = "your-api-key"
+   $env:COMFYUI_API_URL = "http://127.0.0.1:8188"
 
-Model and provider settings are configurable in code but are not exposed as
-command-line options at this stage. More providers will be supported in the
-future.
+Provider connection settings come from environment variables, while model and
+image-generation options are exposed through the command line.
 
 Current Limitations
 -------------------

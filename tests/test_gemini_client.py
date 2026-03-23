@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+import os
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -10,7 +11,6 @@ from PIL import Image
 
 from librito.image_clients.gemini import (
     GeminiImageClient,
-    GeminiImageClientConfig,
     GeminiImageClientError,
 )
 
@@ -22,6 +22,7 @@ class GeminiImageClientTests(unittest.TestCase):
     @patch("librito.image_clients.gemini.types.GenerateContentConfig")
     @patch("librito.image_clients.gemini.types.HttpOptions")
     @patch("librito.image_clients.gemini.genai.Client")
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}, clear=True)
     def test_generate_image_returns_first_inline_image(
         self,
         client_class: Mock,
@@ -47,7 +48,7 @@ class GeminiImageClientTests(unittest.TestCase):
         generate_content_config_class.side_effect = lambda **kwargs: kwargs
         image_config_class.side_effect = lambda **kwargs: kwargs
 
-        client = GeminiImageClient(GeminiImageClientConfig(api_key="test-key"))
+        client = GeminiImageClient()
         generated_image = client.generate_image("draw a dog")
 
         self.assertIsInstance(generated_image, Image.Image)
@@ -56,10 +57,18 @@ class GeminiImageClientTests(unittest.TestCase):
         http_options_class.assert_called_once_with(timeout=60000)
 
     @patch("librito.image_clients.gemini.genai.Client")
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}, clear=True)
     def test_sdk_client_errors_are_wrapped(self, client_class: Mock) -> None:
         """SDK initialization failures should surface as client errors."""
 
         client_class.side_effect = RuntimeError("boom")
 
         with self.assertRaisesRegex(GeminiImageClientError, "Failed to initialize"):
-            GeminiImageClient(GeminiImageClientConfig(api_key="test-key"))
+            GeminiImageClient()
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_missing_api_key_raises_client_error(self) -> None:
+        """Gemini should fail fast when its API key is absent."""
+
+        with self.assertRaisesRegex(GeminiImageClientError, "GEMINI_API_KEY"):
+            GeminiImageClient()

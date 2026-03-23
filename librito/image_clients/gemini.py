@@ -2,36 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
 
 from google import genai
 from google.genai import types
 from PIL import Image
 
-
-@dataclass(frozen=True, slots=True)
-class GeminiImageClientConfig:
-    """Configuration for Gemini image generation requests.
-
-    Parameters
-    ----------
-    api_key:
-        Gemini API key.
-    model:
-        Image generation model identifier.
-    aspect_ratio:
-        Requested image aspect ratio.
-    image_size:
-        Requested image size.
-    timeout_seconds:
-        Request timeout passed to the SDK HTTP layer.
-    """
-
-    api_key: str
-    model: str = "gemini-3.1-flash-image-preview"
-    aspect_ratio: str = "1:1"
-    image_size: str = "1K"
-    timeout_seconds: float = 60.0
+_API_KEY_ENV_VAR = "GEMINI_API_KEY"
 
 
 class GeminiImageClientError(RuntimeError):
@@ -41,26 +18,45 @@ class GeminiImageClientError(RuntimeError):
 class GeminiImageClient:
     """Gemini image-generation client backed by the official SDK."""
 
-    def __init__(self, config: GeminiImageClientConfig) -> None:
+    def __init__(
+        self,
+        *,
+        model: str = "gemini-3.1-flash-image-preview",
+        aspect_ratio: str = "1:1",
+        image_size: str = "1K",
+        timeout_seconds: float = 60.0,
+    ) -> None:
         """Initialize the client.
 
         Parameters
         ----------
-        config:
-            Runtime configuration for Gemini requests.
+        model:
+            Image generation model identifier.
+        aspect_ratio:
+            Requested image aspect ratio.
+        image_size:
+            Requested image size.
+        timeout_seconds:
+            Request timeout passed to the SDK HTTP layer.
 
         Raises
         ------
         GeminiImageClientError
-            If the SDK client cannot be initialized.
+            If the SDK client cannot be initialized or the API key is missing.
         """
 
-        self._config = config
+        api_key = os.getenv(_API_KEY_ENV_VAR, "").strip()
+        if not api_key:
+            raise GeminiImageClientError(f"Missing required environment variable: {_API_KEY_ENV_VAR}.")
+
+        self._model = model
+        self._aspect_ratio = aspect_ratio
+        self._image_size = image_size
         try:
             self._sdk_client = genai.Client(
-                api_key=self._config.api_key,
+                api_key=api_key,
                 http_options=types.HttpOptions(
-                    timeout=max(int(self._config.timeout_seconds * 1000), 10_000),
+                    timeout=max(int(timeout_seconds * 1000), 10_000),
                 ),
             )
         except Exception as error:
@@ -88,14 +84,14 @@ class GeminiImageClient:
         request_config = types.GenerateContentConfig(
             response_modalities=["IMAGE"],
             image_config=types.ImageConfig(
-                aspect_ratio=self._config.aspect_ratio,
-                image_size=self._config.image_size,
+                aspect_ratio=self._aspect_ratio,
+                image_size=self._image_size,
             ),
         )
 
         try:
             response = self._sdk_client.models.generate_content(
-                model=self._config.model,
+                model=self._model,
                 contents=[prompt],
                 config=request_config,
             )

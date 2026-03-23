@@ -1,0 +1,170 @@
+"""Shared provider-selection helpers for generative backends."""
+
+from __future__ import annotations
+
+import logging
+import os
+
+from google.adk.models.lite_llm import LiteLlm
+
+from librito.image_clients import ImageClient
+from librito.image_clients.comfyui import ComfyUIImageClient
+from librito.image_clients.gemini import GeminiImageClient
+from librito.image_clients.mock import MockImageClient, MockImageClientConfig
+
+logger = logging.getLogger(__name__)
+
+_GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
+_LMS_API_URL_ENV_VAR = "LMS_API_URL"
+_LMS_API_KEY_ENV_VAR = "LMS_API_KEY"
+
+
+def build_segmentation_model(
+    *,
+    provider: str,
+    model: str,
+) -> str | LiteLlm:
+    """Build the model configuration used by the segmentation agent.
+
+    Parameters
+    ----------
+    provider:
+        Text-generation provider name.
+    model:
+        Model identifier understood by the selected provider.
+
+    Returns
+    -------
+    str | LiteLlm
+        Model configuration accepted by ``google.adk.agents.LlmAgent``.
+
+    Raises
+    ------
+    RuntimeError
+        If the selected provider is missing required configuration.
+    ValueError
+        If the provider is unknown.
+    """
+
+    if provider == "gemini":
+        if not os.getenv(_GEMINI_API_KEY_ENV_VAR):
+            raise RuntimeError(f"Missing required environment variable: {_GEMINI_API_KEY_ENV_VAR}.")
+        logger.info("Using Gemini text provider.")
+        return model
+
+    if provider == "lms":
+        api_base = os.getenv(_LMS_API_URL_ENV_VAR)
+        if not api_base:
+            raise RuntimeError(f"Missing required environment variable: {_LMS_API_URL_ENV_VAR}.")
+
+        logger.info("Using LM Studio text provider.")
+        return LiteLlm(
+            model=model,
+            api_base=normalize_openai_compatible_api_base(api_base),
+            api_key=os.getenv(_LMS_API_KEY_ENV_VAR, "not-used"),
+        )
+
+    raise ValueError(f"Unsupported text provider: {provider}.")
+
+
+def build_image_client(
+    *,
+    mock: bool = False,
+    provider: str = "gemini",
+    checkpoint: str | None = None,
+    diffusion_model: str | None = None,
+    clip: str | None = None,
+    vae: str | None = None,
+    aspect_ratio: str = "1:1",
+    image_size: str = "1K",
+) -> ImageClient:
+    """Build the image-generation client used by the illustration pipeline.
+
+    Parameters
+    ----------
+    mock:
+        When ``True``, return a mock client instead of a real backend client.
+    provider:
+        Image-generation provider name.
+    checkpoint:
+        Checkpoint filename for the ComfyUI checkpoint workflow, or optional
+        model override for Gemini.
+    diffusion_model:
+        UNET model filename for the ComfyUI diffusion workflow.
+    clip:
+        CLIP model filename for the ComfyUI diffusion workflow.
+    vae:
+        VAE model filename for the ComfyUI diffusion workflow.
+    aspect_ratio:
+        Requested image aspect ratio.
+    image_size:
+        Requested overall image resolution.
+
+    Returns
+    -------
+    ImageClient
+        Ready-to-use image client for the selected backend.
+
+    Raises
+    ------
+    RuntimeError
+        If the selected provider is missing required configuration.
+    ValueError
+        If the provider is unknown.
+    """
+
+    if mock:
+        logger.info("Using mock image client.")
+        return MockImageClient(MockImageClientConfig(
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+        ))
+
+    if provider == "comfyui":
+        if not checkpoint and not (diffusion_model and clip and vae):
+            raise RuntimeError(
+                "ComfyUI provider requires either --checkpoint or all three of "
+                "--diffusion-model, --clip, and --vae."
+            )
+        logger.info(
+            "Using ComfyUI image provider (%s mode).",
+            "checkpoint" if checkpoint else "diffusion",
+        )
+        return ComfyUIImageClient(
+            checkpoint=checkpoint or "",
+            diffusion_model=diffusion_model or "",
+            clip=clip or "",
+            vae=vae or "",
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+        )
+
+    if provider == "gemini":
+        logger.info("Using Gemini image provider.")
+        return GeminiImageClient(
+            model=checkpoint or "gemini-3.1-flash-image-preview",
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+        )
+
+    raise ValueError(f"Unsupported image provider: {provider}.")
+
+
+def normalize_openai_compatible_api_base(api_base: str) -> str:
+    """Normalize an OpenAI-compatible API base URL.
+
+    Parameters
+    ----------
+    api_base:
+        User-provided API base URL.
+
+    Returns
+    -------
+    str
+        API base URL ending with ``/v1``.
+    """
+
+    normalized_api_base = api_base.rstrip("/")
+    if normalized_api_base.endswith("/v1"):
+        return normalized_api_base
+    return f"{normalized_api_base}/v1"

@@ -20,8 +20,8 @@ Story loading behavior:
 Provider-specific authentication:
 
 * ``gemini`` reads its API key exclusively from ``GEMINI_API_KEY``;
-* ``lms`` targets LM Studio's OpenAI-style ``/v1`` API, optionally accepts
-  ``--api-key``, and otherwise uses the literal placeholder ``not-used``.
+* ``lms`` reads its API base URL from ``LMS_API_URL`` and its API key from
+  ``LMS_API_KEY`` (falling back to ``not-used`` when absent).
 """
 
 from __future__ import annotations
@@ -29,15 +29,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import os
 import sys
 from pathlib import Path
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from librito.providers import build_segmentation_model
 from librito.segmentation.session import SegmentationSession
 from librito.segmentation.tools import build_toolset
 
@@ -47,7 +46,6 @@ _APP_NAME = "librito_story_segmentation"
 _DEFAULT_EXPORT_FILENAME = "story.json"
 _DEFAULT_DRAFT_FILENAME = "story.segmentation.draft.json"
 _DEFAULT_STORY_FILENAME = "story.md"
-_DEFAULT_GEMINI_API_ENV_VAR = "GEMINI_API_KEY"
 
 _SEGMENTATION_AGENT_INSTRUCTION = """
 You are an agent that segments one story into the Librito storybook standard.
@@ -109,16 +107,6 @@ def _parse_arguments() -> argparse.Namespace:
         help="LLM provider used for the segmentation agent.",
     )
     parser.add_argument("--model", required=True, help="Model identifier used by the selected provider.")
-    parser.add_argument(
-        "--api-base",
-        default=None,
-        help="LM Studio API base URL. The script accepts either a server root such as http://127.0.0.1:1234 or a full /v1 base URL.",
-    )
-    parser.add_argument(
-        "--api-key",
-        default=None,
-        help="Optional explicit API key used only for the lms provider.",
-    )
     parser.add_argument("--user-id", default="local_user", help="ADK user identifier for the session.")
     return parser.parse_args()
 
@@ -163,39 +151,6 @@ def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
     session.ensure_draft_exists()
     logger.info("Segmentation session ready (draft: %s, export: %s).", session.draft_path, session.export_path)
     return session
-
-
-def _build_model(arguments: argparse.Namespace) -> str | LiteLlm:
-    """Build the ADK model object for the selected provider.
-
-    Parameters
-    ----------
-    arguments:
-        Parsed CLI arguments.
-
-    Returns
-    -------
-    str | LiteLlm
-        Model configuration accepted by ``LlmAgent``.
-    """
-
-    if arguments.provider == "gemini":
-        if not os.getenv(_DEFAULT_GEMINI_API_ENV_VAR):
-            raise RuntimeError(f"Missing required environment variable: {_DEFAULT_GEMINI_API_ENV_VAR}.")
-        return arguments.model
-
-    if not arguments.api_base:
-        raise RuntimeError("--api-base is required for the lms provider.")
-
-    api_key = arguments.api_key
-    if api_key is None:
-        api_key = "not-used"
-
-    return LiteLlm(
-        model=arguments.model,
-        api_base=_normalize_openai_compatible_api_base(arguments.api_base),
-        api_key=api_key,
-    )
 
 
 def _build_prompt(story_directory: Path) -> str:
@@ -248,26 +203,6 @@ def _read_story_text(path: Path) -> str:
     return story_text
 
 
-def _normalize_openai_compatible_api_base(api_base: str) -> str:
-    """Normalize an LM Studio API base URL.
-
-    Parameters
-    ----------
-    api_base:
-        User-provided LM Studio API base URL.
-
-    Returns
-    -------
-    str
-        API base URL ending with ``/v1``.
-    """
-
-    normalized_api_base = api_base.rstrip("/")
-    if normalized_api_base.endswith("/v1"):
-        return normalized_api_base
-    return f"{normalized_api_base}/v1"
-
-
 async def _run() -> int:
     """Run the segmentation agent once and print its final response.
 
@@ -292,7 +227,10 @@ async def _run() -> int:
     logger.info("Building segmentation agent...")
     agent = LlmAgent(
         name="segment_story_agent",
-        model=_build_model(arguments),
+        model=build_segmentation_model(
+            provider=arguments.provider,
+            model=arguments.model,
+        ),
         instruction=_SEGMENTATION_AGENT_INSTRUCTION,
         tools=build_toolset(),
     )

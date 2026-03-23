@@ -225,6 +225,12 @@ The current runtime uses:
 * LiteLLM for LM Studio's local API,
 * Gemini models for larger runs when the ``gemini`` provider is selected.
 
+Runtime configuration comes from environment variables:
+
+* ``GEMINI_API_KEY`` for Gemini-backed segmentation,
+* ``LMS_API_URL`` for LM Studio's OpenAI-compatible endpoint,
+* ``LMS_API_KEY`` when the local endpoint expects authentication.
+
 Checklist
 ---------
 
