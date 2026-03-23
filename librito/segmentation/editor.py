@@ -11,8 +11,9 @@ from librito.segmentation.validators import (
     check_prompt_consistency,
     count_concept_occurrences,
     expand_prompt_for_scene,
-    is_valid_anchor_tag,
+    normalize_anchor_tag,
 )
+from librito.story_io import load_storybook
 from librito.story_io import save_storybook
 
 _GENERATED_SCENE_LABEL_PATTERN = re.compile(r"^scene-(\d{3})$")
@@ -22,7 +23,7 @@ class StorybookEditor:
     """Edit a draft storybook stored on disk."""
 
     def __init__(self, session: SegmentationSession) -> None:
-        """Store the backing session and ensure the draft exists.
+        """Store the backing session.
 
         Parameters
         ----------
@@ -31,7 +32,6 @@ class StorybookEditor:
         """
 
         self._session = session
-        self._session.ensure_draft_exists()
 
     def get_full_story(self) -> str:
         """Return the source story text.
@@ -42,7 +42,7 @@ class StorybookEditor:
             Raw source story.
         """
 
-        return self._session.load_full_story()
+        return self._session.story_path.read_text(encoding="utf-8")
 
     def get_title(self) -> str:
         """Return the current draft title.
@@ -140,12 +140,10 @@ class StorybookEditor:
         Raises
         ------
         ValueError
-            If the tag format is invalid or already exists.
+            If the tag cannot be normalized or already exists.
         """
 
-        normalized_tag = tag.strip()
-        if not is_valid_anchor_tag(normalized_tag):
-            raise ValueError("Anchor tags must match the strict format <NAME>.")
+        normalized_tag = normalize_anchor_tag(tag)
 
         storybook = self._load()
         if normalized_tag in storybook.recurring_concepts:
@@ -168,11 +166,12 @@ class StorybookEditor:
             If the concept does not exist.
         """
 
+        normalized_tag = normalize_anchor_tag(tag)
         storybook = self._load()
         try:
-            del storybook.recurring_concepts[tag]
+            del storybook.recurring_concepts[normalized_tag]
         except KeyError as error:
-            raise ValueError(f"Unknown recurring concept: {tag}.") from error
+            raise ValueError(f"Unknown recurring concept: {normalized_tag}.") from error
         self._save(storybook)
 
     def rename_concept(self, old_tag: str, new_tag: str) -> None:
@@ -186,20 +185,19 @@ class StorybookEditor:
             Replacement anchor tag.
         """
 
-        normalized_new_tag = new_tag.strip()
-        if not is_valid_anchor_tag(normalized_new_tag):
-            raise ValueError("Anchor tags must match the strict format <NAME>.")
+        normalized_old_tag = normalize_anchor_tag(old_tag)
+        normalized_new_tag = normalize_anchor_tag(new_tag)
 
         storybook = self._load()
-        if old_tag not in storybook.recurring_concepts:
-            raise ValueError(f"Unknown recurring concept: {old_tag}.")
-        if normalized_new_tag != old_tag and normalized_new_tag in storybook.recurring_concepts:
+        if normalized_old_tag not in storybook.recurring_concepts:
+            raise ValueError(f"Unknown recurring concept: {normalized_old_tag}.")
+        if normalized_new_tag != normalized_old_tag and normalized_new_tag in storybook.recurring_concepts:
             raise ValueError(f"Recurring concept already exists: {normalized_new_tag}.")
 
-        concept_value = storybook.recurring_concepts.pop(old_tag)
+        concept_value = storybook.recurring_concepts.pop(normalized_old_tag)
         storybook.recurring_concepts[normalized_new_tag] = concept_value
         for scene in storybook.scenes:
-            scene.prompt = scene.prompt.replace(old_tag, normalized_new_tag)
+            scene.prompt = scene.prompt.replace(normalized_old_tag, normalized_new_tag)
         self._save(storybook)
 
     def list_scenes(self) -> list[dict[str, str]]:
@@ -455,7 +453,7 @@ class StorybookEditor:
             Current draft storybook.
         """
 
-        return self._session.load_storybook()
+        return load_storybook(self._session.draft_path)
 
     def _save(self, storybook: Storybook) -> None:
         """Persist the updated draft storybook.
@@ -466,7 +464,7 @@ class StorybookEditor:
             Draft storybook to persist.
         """
 
-        self._session.save_storybook(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def _get_scene(self, storybook: Storybook, label: str) -> StoryScene:
         """Resolve a scene by label.

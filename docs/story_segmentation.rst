@@ -60,6 +60,11 @@ Field Reference
    a stable visual description. During generation, tags in scene prompts are
    replaced by their description.
 
+   In the agent tool interface, recurring concepts are created and renamed from
+   plain names such as ``leo`` or ``living room``. The implementation
+   normalizes them internally to canonical keys such as ``<LEO>`` and
+   ``<LIVING_ROOM>``.
+
 ``scenes[].label``
    Stable identifier for the scene. Labels must be unique and non-empty. They
    do not define order; the order comes from the ``scenes`` array itself.
@@ -144,7 +149,8 @@ The segmentation agent should follow a narrow workflow:
    more than one scene.
 5. Build scenes in narrative order.
 6. Write scene texts in the story language.
-7. Write scene prompts in English.
+7. Write scene prompts in English, using explicit anchors like ``<LEO>`` when a
+   recurring concept is referenced.
 8. Run prompt-consistency checks.
 9. Repair the draft until validation passes.
 10. Export the storybook.

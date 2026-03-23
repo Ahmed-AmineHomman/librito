@@ -42,6 +42,7 @@ _DIF_OUTPUT_NODE_ID = "11"
 
 _SERVER_URL_ENV_VAR = "COMFYUI_API_URL"
 _API_KEY_ENV_VAR = "COMFYUI_API_KEY"
+_POLL_INTERVAL_SECONDS = 1.0
 
 
 class ComfyUIImageClientError(RuntimeError):
@@ -66,7 +67,6 @@ class ComfyUIImageClient:
             vae: str = "",
             aspect_ratio: str = "1:1",
             image_size: str = "1K",
-            poll_interval: float = 1.0,
     ) -> None:
         """Initialize the client.
 
@@ -84,8 +84,6 @@ class ComfyUIImageClient:
             Requested image aspect ratio.
         image_size:
             Requested overall image resolution.
-        poll_interval:
-            Seconds between history polling requests.
         """
 
         server_url = os.getenv(_SERVER_URL_ENV_VAR, "").strip()
@@ -99,7 +97,6 @@ class ComfyUIImageClient:
             )
 
         self._server_url = server_url.rstrip("/")
-        self._poll_interval = poll_interval
         self._is_checkpoint_mode = bool(checkpoint)
         self._width, self._height = compute_dimensions(
             aspect_ratio,
@@ -317,7 +314,7 @@ class ComfyUIImageClient:
                     )
                 break
 
-            time.sleep(self._poll_interval)
+            time.sleep(_POLL_INTERVAL_SECONDS)
 
         outputs = history_entry.get("outputs", {})
         if self._output_node_id not in outputs:

@@ -1,31 +1,25 @@
 # AGENTS.md
 
+This repo aims to be an app (either CLI or GUI) helping users convert natural language stories into illustrated books with the help of AI-powered agents.
+
+The project is in its early stages, and the code is expected to be rough and evolving. In particular, many structuring decisions have not yet been made (choice between CLI or GUI, API support, etc...). While a stable version has not been reached, aim for simple code without too elaborated scaffolding.
+
 ## Repository overview
 
-This repo contains an embryon of a CLI tool helping users convert natural language stories into illustrated books with the help of AI-powered agents.
-
-The project is in early stages, and the code is expected to be rough and evolving.
-
-Structure:
-
-- `./.agents/`: skills definitions,
-- `./database/`: default folder for storing cli-content, splitted per stories (e.g., `./database/my-story/`), not followed by git,
-- `./librito/`: main library code,
+- `./.agents/`: skills definitions (editable if requested),
+- `./database/`: default app working folder,
+- `./librito/`: main source code,
 - `./docs/`: user-facing documentation (sphinx-based),
 - `./helpers/`: helper scripts providing useful utilities for story conversion, usable both by users & coding agents,
-- `./tests/`: test suite.
+- `./tests/`: test suite (unittest).
 
 ## Core rules
 
-- Prefer the smallest safe diff that solves the stated problem.
-- Keep one concern per change.
-- Do not mix bug fixes, refactors, style churn, and new features in the same change.
+- Prefer clear to clever code.
 - Preserve existing architecture and conventions unless the task explicitly requires a change.
-- Prefer editing existing code over introducing new abstraction layers.
-- Prefer deletion over addition, and addition over new dependencies.
-- Do not "optimize everything". Performance work needs either an explicit request or evidence of a real bottleneck.
+- Aim for the simplest scaffolding: linear code is OK as long as there is no code duplication.
 
-## Human in the loop
+### Human in the loop
 
 - For any non-trivial task, briefly state:
   - the intent,
@@ -43,8 +37,9 @@ Structure:
 - Type hints are required for function and method parameters, as well as return values.
 - Type hints for global variables are optional but recommended.
 
-## GenAI API safety
+### API Management
 
-- API keys must exclusively be fetched from environment variables. No hardcoded keys, no API keys in parameters nor config files, no secrets in test fixtures or notebooks.
-- If existing, the `.env` file in the repository root contains the necessary variables. Load it with `source .env` or a similar mechanism (if in Powershell) if needed.
-- Use mock responses for testing and development, and avoir real paid or network-dependent API calls in such cases, unless explicitely requested.
+- API-related data (urls, keys, tokens, etc.) must **exclusively be fetched from environment variables**. This means that code should not pass such variables as parameters whatsoever.
+- Providing the necessary environment variables is the **responsibility of the user**. Code should assume that they are already defined and available, and raise gracefully if not.
+- If existing, the `.env` file in the repository root contains the necessary variables. You can source it for debugging and test purposes when relevant.
+- Use mock responses for testing and development, and avoir real paid or network-dependent API calls in such cases, unless explicitly requested.

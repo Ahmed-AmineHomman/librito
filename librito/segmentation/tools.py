@@ -9,10 +9,13 @@ from google.adk.tools import ToolContext
 
 from librito.segmentation.editor import StorybookEditor
 from librito.segmentation.session import SegmentationSession
+from librito.segmentation.validators import normalize_anchor_tag
 
 _STATE_STORY_PATH = "story_path"
 _STATE_DRAFT_PATH = "draft_path"
 _STATE_EXPORT_PATH = "export_path"
+_STATE_SEGMENTATION_DONE = "segmentation_done"
+_STATE_SEGMENTATION_SUMMARY = "segmentation_summary"
 
 
 def get_full_story(tool_context: ToolContext) -> dict[str, str]:
@@ -75,29 +78,32 @@ def list_concepts(tool_context: ToolContext) -> dict[str, dict[str, str]]:
     )
 
 
-def add_concept(tag: str, value: str, tool_context: ToolContext) -> dict[str, str]:
-    """Add a recurring concept definition."""
+def add_concept(name: str, value: str, tool_context: ToolContext) -> dict[str, str]:
+    """Add a recurring concept definition from a plain concept name."""
 
     return _execute_tool_action(
-        lambda: (_build_editor(tool_context).add_concept(tag, value), {"tag": tag.strip()})[1],
+        lambda: (_build_editor(tool_context).add_concept(name, value), {"tag": normalize_anchor_tag(name)})[1],
     )
 
 
-def remove_concept(tag: str, tool_context: ToolContext) -> dict[str, str]:
-    """Remove a recurring concept definition."""
+def remove_concept(name: str, tool_context: ToolContext) -> dict[str, str]:
+    """Remove a recurring concept definition using a plain concept name."""
 
     return _execute_tool_action(
-        lambda: (_build_editor(tool_context).remove_concept(tag), {"tag": tag})[1],
+        lambda: (_build_editor(tool_context).remove_concept(name), {"tag": normalize_anchor_tag(name)})[1],
     )
 
 
-def rename_concept(old_tag: str, new_tag: str, tool_context: ToolContext) -> dict[str, str]:
+def rename_concept(old_name: str, new_name: str, tool_context: ToolContext) -> dict[str, str]:
     """Rename a recurring concept and update prompts that reference it."""
 
     return _execute_tool_action(
         lambda: (
-            _build_editor(tool_context).rename_concept(old_tag, new_tag),
-            {"old_tag": old_tag, "new_tag": new_tag.strip()},
+            _build_editor(tool_context).rename_concept(old_name, new_name),
+            {
+                "old_tag": normalize_anchor_tag(old_name),
+                "new_tag": normalize_anchor_tag(new_name),
+            },
         )[1],
     )
 
@@ -231,6 +237,35 @@ def export_storybook(tool_context: ToolContext) -> dict[str, str]:
     )
 
 
+def finish_segmentation(summary: str, tool_context: ToolContext) -> dict[str, str]:
+    """Mark the current segmentation run as complete and stop the invocation.
+
+    Parameters
+    ----------
+    summary:
+        Short final summary describing the resulting segmentation.
+    tool_context:
+        ADK tool context for the current invocation.
+
+    Returns
+    -------
+    dict[str, str]
+        Stored final summary.
+    """
+
+    def _finish() -> dict[str, str]:
+        normalized_summary = summary.strip()
+        if not normalized_summary:
+            raise ValueError("Summary must not be empty.")
+        tool_context.state[_STATE_SEGMENTATION_DONE] = True
+        tool_context.state[_STATE_SEGMENTATION_SUMMARY] = normalized_summary
+        tool_context.actions.skip_summarization = True
+        tool_context._invocation_context.end_invocation = True
+        return {"summary": normalized_summary}
+
+    return _execute_tool_action(_finish)
+
+
 def build_toolset() -> list[Any]:
     """Build the raw function tool list for the segmentation agent.
 
@@ -262,6 +297,7 @@ def build_toolset() -> list[Any]:
         expand_prompt,
         expand_scene,
         export_storybook,
+        finish_segmentation,
     ]
 
 

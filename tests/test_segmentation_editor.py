@@ -6,14 +6,29 @@ import json
 import unittest
 from pathlib import Path
 
+from librito.models import Storybook
 from librito.segmentation.editor import StorybookEditor
 from librito.segmentation.session import SegmentationSession
+from librito.story_io import save_storybook
 
 from tests.conftest import workspace_temporary_directory
 
 
 class StorybookEditorTests(unittest.TestCase):
     """Validate draft editing and prompt-consistency helpers."""
+
+    def test_add_concept_normalizes_loose_tag_to_canonical_anchor(self) -> None:
+        """Loose concept names should be stored using the canonical anchor form."""
+
+        with workspace_temporary_directory() as temporary_directory:
+            session = _build_session(temporary_directory)
+            editor = StorybookEditor(session)
+
+            editor.add_concept("superchick", "female superhero in blue pants")
+
+            concepts = editor.list_concepts()
+
+        self.assertEqual(concepts, {"<SUPERCHICK>": "female superhero in blue pants"})
 
     def test_add_scene_generates_default_label_and_respects_position(self) -> None:
         """New scenes should receive default labels and 1-based insertions."""
@@ -44,14 +59,14 @@ class StorybookEditorTests(unittest.TestCase):
         with workspace_temporary_directory() as temporary_directory:
             session = _build_session(temporary_directory)
             editor = StorybookEditor(session)
-            editor.add_concept("<DOG>", "A fluffy dog")
+            editor.add_concept("dog", "A fluffy dog")
             editor.add_scene(
                 label="opening",
                 text="Calmio runs.",
                 prompt="<DOG> runs through the field.",
             )
 
-            editor.rename_concept("<DOG>", "<CALMIO>")
+            editor.rename_concept("dog", "calmio")
 
             scenes = editor.list_scenes()
             concepts = editor.list_concepts()
@@ -65,8 +80,8 @@ class StorybookEditorTests(unittest.TestCase):
         with workspace_temporary_directory() as temporary_directory:
             session = _build_session(temporary_directory)
             editor = StorybookEditor(session)
-            editor.add_concept("<DOG>", "A fluffy dog")
-            editor.add_concept("<RIVER>", "A bright river")
+            editor.add_concept("dog", "A fluffy dog")
+            editor.add_concept("river", "A bright river")
             editor.add_scene(
                 label="opening",
                 text="Calmio runs.",
@@ -88,7 +103,7 @@ class StorybookEditorTests(unittest.TestCase):
             editor = StorybookEditor(session)
             editor.set_title("Calmio")
             editor.set_style("soft watercolor")
-            editor.add_concept("<DOG>", "A fluffy dog")
+            editor.add_concept("dog", "A fluffy dog")
             editor.add_scene(
                 label="opening",
                 text="Calmio runs.",
@@ -126,8 +141,19 @@ def _build_session(base_directory: Path) -> SegmentationSession:
 
     story_path = base_directory / "story.md"
     story_path.write_text("Calmio runs by the river.", encoding="utf-8")
-    return SegmentationSession(
+    session = SegmentationSession(
         story_path=story_path,
         draft_path=base_directory / "story.segmentation.draft.json",
         export_path=base_directory / "story.json",
     )
+    save_storybook(
+        Storybook(
+            title="",
+            style="",
+            constraints="",
+            recurring_concepts={},
+            scenes=[],
+        ),
+        session.draft_path,
+    )
+    return session

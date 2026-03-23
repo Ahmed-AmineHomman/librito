@@ -11,6 +11,41 @@ _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
 _STRICT_ANCHOR_PATTERN = re.compile(r"^<[A-Z0-9_]+>$")
 
 
+def normalize_anchor_tag(tag: str) -> str:
+    """Normalize a recurring concept tag to the canonical anchor format.
+
+    Parameters
+    ----------
+    tag:
+        User-provided recurring concept tag, with or without angle brackets.
+
+    Returns
+    -------
+    str
+        Canonical anchor tag in the ``<NAME>`` format.
+
+    Raises
+    ------
+    ValueError
+        If the tag is empty or cannot be normalized to a valid anchor.
+    """
+
+    normalized_tag = tag.strip()
+    if not normalized_tag:
+        raise ValueError("Anchor tags must be non-empty.")
+    if is_valid_anchor_tag(normalized_tag):
+        return normalized_tag
+    if normalized_tag.startswith("<") and normalized_tag.endswith(">"):
+        normalized_tag = normalized_tag[1:-1].strip()
+    normalized_tag = re.sub(r"[^A-Z0-9]+", "_", normalized_tag.upper()).strip("_")
+    if not normalized_tag:
+        raise ValueError("Anchor tags must contain at least one letter or digit.")
+    canonical_tag = f"<{normalized_tag}>"
+    if not is_valid_anchor_tag(canonical_tag):
+        raise ValueError("Anchor tags must normalize to the strict format <NAME>.")
+    return canonical_tag
+
+
 def is_valid_anchor_tag(tag: str) -> bool:
     """Check whether an anchor tag follows the canonical format.
 
