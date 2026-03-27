@@ -1,59 +1,45 @@
 ---
 name: segment-story
-description: Analyzes a story provided by the user, extracts recurring visual concepts, segments it into scenes, and generates a valid JSON object with story text and English image prompts. Use when ChatGPT must transform a user-provided story into the Librito segmented story standard while enforcing anchor consistency and valid JSON.
+description: Segment a source story into the repository's canonical storybook artifact by choosing visually meaningful scenes, preserving narrative flow, and defining consistent recurring anchors. Use when Codex must create, refine, or validate the story structure for an illustrated book inside the workspace; use a separate skill for detailed prompt, style, or constraint work.
 ---
 
-This skill explains how to transform a raw story into a segmented storybook for
-illustrated-book generation.
+Use this skill to create or revise the segmentation layer of a storybook for illustrated-book generation.
 
-The output is a JSON object containing:
+This skill defines the semantic work of segmentation:
 
-* a title,
-* a global illustration style,
-* optional constraints,
-* recurring concept anchors,
-* an ordered list of scenes.
+- choosing the scene breakdown,
+- preserving story coverage,
+- preserving the story flow,
+- defining recurring visual anchors,
+- writing scene texts,
+- ensuring each scene corresponds to a clear illustratable moment.
 
-Each scene contains:
+Use the repository's authoritative schema, storage rules, and validators for artifact structure and compliance.
 
-* a stable ``label``,
-* a ``text`` field in the story language,
-* a ``prompt`` field in English,
-* an ``image_path`` field.
+Do not treat this skill as the source of truth for JSON shape, file layout, or generation parameters.
 
 Workflow
 --------
 
 1. Read the full story carefully.
-2. Identify the recurring visual concepts in the story:
+2. Locate the current story workspace and inspect any existing segmentation artifacts.
+3. Determine whether the current segmentation should be created, kept, or revised.
+4. Identify recurring visual concepts in the story:
    * characters,
    * important settings,
    * important recurring objects.
-3. If the user does not provide one, choose a suitable illustration style in
-   English.
-4. Define recurring concept anchors for concepts that appear in more than one
-   scene.
-5. Split the story into scenes while preserving the narrative flow.
-6. Write each scene text in the language of the story.
-7. Write each scene prompt in English.
-8. Verify prompt consistency:
-   * all referenced anchors are defined,
-   * unused anchors are removed,
-   * anchors used in exactly one scene are removed or inlined.
-9. Return valid JSON matching the expected schema.
+5. Split the story into scenes while preserving narrative flow, story coverage, and visual clarity.
+6. Ensure that each scene captures a distinct and illustratable moment.
+7. Write each scene text in the language of the story.
+8. Define recurring concept anchors only for concepts that appear in more than one scene.
+9. If the canonical artifact includes prompt fields, keep them aligned with the scene intent and anchor system, but leave detailed prompt optimization to a dedicated prompting skill.
+10. Run the relevant repository validators and consistency checks.
+11. Repair weak or invalid segmentation state before declaring the work complete.
 
-Style and Anchor Definition
----------------------------
+Anchor Definition
+-----------------
 
-The ``style`` field is a single English description of the illustration style.
-It is automatically prefixed to all prompts during illustration generation.
-
-The ``constraints`` field should remain empty by default. Only populate it when
-the user or story requires additional generation constraints.
-
-Recurring concepts are stored in ``recurring_concepts`` as anchor mappings:
-
-* ``<CONCEPT_NAME>``: stable visual description of the concept.
+Recurring concepts are stored as anchor mappings from canonical tags to stable visual descriptions.
 
 Anchor tags must use the strict format ``<NAME>`` with uppercase letters,
 digits, and underscores only.
@@ -67,6 +53,7 @@ Scene Texts
 Scene texts should:
 
 * preserve the story flow,
+* cover the story at an appropriate granularity,
 * remain close to the original writing when possible,
 * stay in the original story language.
 
@@ -75,90 +62,33 @@ Scene Prompts
 
 Scene prompts should:
 
-* be written in English,
-* represent the main visual moment of the scene,
-* use recurring concept anchors when appropriate,
-* remain understandable once anchors are expanded.
+* remain faithful to the scene intent,
+* preserve anchor usage when anchors are relevant,
+* stay usable for downstream illustration work,
+* are written in english.
 
-Expected JSON Output
---------------------
-
-The output must be a valid JSON object with exactly this structure:
-
-{
-  "title": "Story title",
-  "style": "Artistic style in English",
-  "constraints": "",
-  "recurring_concepts": {
-    "<CONCEPT_NAME>": "Detailed concept description"
-  },
-  "scenes": [
-    {
-      "label": "scene-find-car",
-      "text": "Scene text in the language of the story",
-      "prompt": "Scene illustration prompt in English",
-      "image_path": ""
-    }
-  ]
-}
+Prompt wording refinement, style definition, and constraint tuning belong to a separate prompting or illustration-preparation skill.
 
 Output Validation Rules
 -----------------------
 
-Before returning the final answer, verify:
+Before declaring the segmentation complete, verify through repository tools and validators that:
 
-* the top-level value is a JSON object,
-* the object contains exactly ``title``, ``style``, ``constraints``,
-  ``recurring_concepts``, and ``scenes``,
-* ``title``, ``style``, and ``constraints`` are strings,
-* ``recurring_concepts`` is an object mapping anchor tags to strings,
-* ``scenes`` is an array,
-* each scene contains exactly ``label``, ``text``, ``prompt``, and
-  ``image_path``,
-* scene labels are unique non-empty strings,
-* prompts are written in English,
+* the canonical segmentation artifact respects the repository schema,
+* scene labels are unique and stable,
 * scene texts are written in the story language,
+* scene prompts are written in english,
+* scene order preserves the narrative flow,
+* the story is covered without major omissions,
+* scenes are distinct enough to avoid obvious redundancy,
 * all anchors used in prompts are defined,
-* the final output parses correctly as standard JSON.
+* unused recurring concepts are removed,
+* anchors used in only one scene are removed or inlined,
+* the resulting segmentation is suitable for downstream illustration generation.
 
-Example
--------
+Completion
+----------
 
-### Input Story
+The work is complete only when the segmentation is both semantically satisfactory and structurally validated.
 
-> Le matin, Léo cherchait son jouet préféré dans le salon lumineux de sa maison. Il finit par trouver sa petite voiture rouge sous le canapé.
-> Ravi, le petit garçon courut dehors. Il passa des heures à faire rouler son bolide dans l'herbe haute du jardin sous un grand soleil.
-> Quand l'heure du goûter arriva, Léo rentra dans la cuisine. Assis à la grande table en bois, il dévora ses biscuits.
-
-### Expected JSON Output
-
-{
-  "title": "Léo et sa voiture rouge",
-  "style": "Children's watercolor illustration, soft strokes, pastel colors, warm and natural lighting",
-  "constraints": "",
-  "recurring_concepts": {
-    "<LEO>": "5-year old male toddler wearing beige sports pants and a plain white t-shirt. He has very short black hair, brown eyes, fair skin with some freckles on his cheeks.",
-    "<TOY_CAR>": "Small bright red toy sports car with black wheels and a white racing stripe.",
-    "<HOUSE>": "Cozy suburban house interior, featuring warm oak wood floors, white walls with pastel yellow accents, and large windows letting in natural sunlight."
-  },
-  "scenes": [
-    {
-      "label": "scene-find-car",
-      "text": "Le matin, Léo cherchait son jouet préféré dans le salon lumineux de sa maison. Il finit par trouver sa petite voiture rouge sous le canapé.",
-      "prompt": "<LEO> is kneeling on the floor of the <HOUSE> living room, happily pulling a <TOY_CAR> from under a comfortable sofa.",
-      "image_path": ""
-    },
-    {
-      "label": "scene-garden-play",
-      "text": "Ravi, le petit garçon courut dehors. Il passa des heures à faire rouler son bolide dans l'herbe haute du jardin sous un grand soleil.",
-      "prompt": "<LEO> is playing outside in a bright sunny garden with tall green grass, enthusiastically pushing his <TOY_CAR> on the ground.",
-      "image_path": ""
-    },
-    {
-      "label": "scene-snack",
-      "text": "Quand l'heure du goûter arriva, Léo rentra dans la cuisine. Assis à la grande table en bois, il dévora ses biscuits.",
-      "prompt": "<LEO> is sitting at a large wooden table in the kitchen of the <HOUSE>, happily eating cookies.",
-      "image_path": ""
-    }
-  ]
-}
+If a storage-management skill exists, use it for file placement and naming.

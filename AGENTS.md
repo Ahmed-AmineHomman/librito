@@ -1,45 +1,92 @@
 # AGENTS.md
 
-This repo aims to be an app (either CLI or GUI) helping users convert natural language stories into illustrated books with the help of AI-powered agents.
+## Purpose
 
-The project is in its early stages, and the code is expected to be rough and evolving. In particular, many structuring decisions have not yet been made (choice between CLI or GUI, API support, etc...). While a stable version has not been reached, aim for simple code without too elaborated scaffolding.
+This repository is an agent-native workspace for transforming stories into structured, illustrated storybooks.
 
-## Repository overview
+It is designed to be used with coding agents. The repository itself provides the operating environment:
 
-- `./.agents/`: skills definitions (editable if requested),
-- `./database/`: default app working folder,
-- `./librito/`: main source code,
-- `./docs/`: user-facing documentation (sphinx-based),
-- `./helpers/`: helper scripts providing useful utilities for story conversion, usable both by users & coding agents,
-- `./tests/`: test suite (unittest).
+- skills define how to perform specific tasks,
+- helper scripts perform deterministic checks and transformations,
+- `database/` stores source material, intermediate artifacts, generated outputs, and evaluation results.
 
-## Core rules
+This repository is not primarily a traditional end-user app. Its main runtime is an agent working inside the repo.
 
-- Prefer clear to clever code.
-- Preserve existing architecture and conventions unless the task explicitly requires a change.
-- Aim for the simplest scaffolding: linear code is OK as long as there is no code duplication.
+Note: the agent can also be required by the user to work on the codebase, like in the standard workflow for coding agents. Corresponding instructions are given below.
 
-### Human in the loop
+## Operating Principle
 
-- For any non-trivial task, briefly state:
-  - the intent,
-  - the files or areas likely to change,
-  - the validation plan.
-- Stop and ask for approval before applying modifications to the codebase, unless the task is trivial and self-contained (e.g., fixing a typo in a docstring, or adding a missing type hint).
-- Do not create commits, tags, releases, or upstream pull requests unless explicitly asked.
+Use the repository as a modular system.
 
-### Coding style
+- Use `AGENTS.md` for the global logic of the repository.
+- Use skills for task-specific instructions.
+- Use helper scripts for deterministic operations.
+- Use documented artifact formats and storage conventions so outputs remain inspectable and reusable.
 
+Do not place detailed task procedures in this file when they belong in a skill or script interface.
+
+## Agent Role
+
+The agent is expected to orchestrate the workflow end-to-end.
+
+This includes:
+
+- understanding the user request,
+- selecting the relevant skills,
+- producing the required artifacts,
+- running the appropriate helper scripts,
+- interpreting validation results,
+- iterating when needed.
+
+The agent should rely on existing skills and scripts whenever available rather than improvising the workflow from
+scratch.
+
+## Responsibility Split
+
+Follow this principle throughout the repository:
+
+- Agents handle semantic and judgment-based work.
+- Scripts handle strict, deterministic, and reproducible work.
+
+In practice:
+
+- segmentation, prompt writing, arbitration, and revision belong to the agent,
+- validation, scoring, storage setup, format checks, and consistency checks belong to code.
+
+## Repository Areas
+
+- `./.agents/`: skills and agent-oriented guidance
+- `./database/`: working area for stories and generated artifacts
+- `./librito/`: reusable source code
+- `./docs/`: documentation
+- `./helpers/`: deterministic helper scripts
+- `./tests/`: automated tests
+
+## Core Constraints
+
+- Prefer clear code over clever code.
+- Keep scaffolding simple unless stronger structure is required.
+- Preserve existing architecture unless a change is necessary.
 - All source code, identifiers, comments, and docstrings must be written in English.
-- User-facing documentation may be written in another language when appropriate.
 - All functions, methods, classes, and modules must be documented.
 - Use numpydoc-style docstrings.
-- Type hints are required for function and method parameters, as well as return values.
-- Type hints for global variables are optional but recommended.
+- Type hints are required for function and method parameters and return values.
 
-### API Management
+## API Rules
 
-- API-related data (urls, keys, tokens, etc.) must **exclusively be fetched from environment variables**. This means that code should not pass such variables as parameters whatsoever.
-- Providing the necessary environment variables is the **responsibility of the user**. Code should assume that they are already defined and available, and raise gracefully if not.
-- If existing, the `.env` file in the repository root contains the necessary variables. You can source it for debugging and test purposes when relevant.
-- Use mock responses for testing and development, and avoir real paid or network-dependent API calls in such cases, unless explicitly requested.
+- API-related configuration must be read from environment variables only.
+- Do not hardcode API keys, tokens, or endpoints.
+- Use mocks in tests and development whenever possible.
+- Avoid real paid or network-dependent API calls in tests unless explicitly requested.
+
+## Human in the Loop
+
+For non-trivial code changes, briefly state:
+
+- the intent,
+- the areas likely to change,
+- the validation plan.
+
+Ask for approval before applying non-trivial modifications, unless the task is clearly small and self-contained.
+
+Do not create commits, tags, releases, or pull requests unless explicitly asked.
