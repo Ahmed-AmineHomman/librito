@@ -9,6 +9,9 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Sequence
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from librito.generate_illustrations import generate_story_illustrations
 
 logger = logging.getLogger(__name__)

@@ -12,6 +12,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from librito.io import load_storybook
 from librito.models import Storybook
 from librito.prompt_builder import expand_prompt_anchors
