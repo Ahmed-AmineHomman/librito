@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
 import sys
 import warnings
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Sequence
 
@@ -14,21 +14,8 @@ from librito.generate_illustrations import generate_story_illustrations
 logger = logging.getLogger(__name__)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the illustration generation entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    parser = argparse.ArgumentParser(
+def load_parameters() -> Namespace:
+    parser = ArgumentParser(
         description="Generate illustrations for a segmented storybook.",
     )
     parser.add_argument(
@@ -76,7 +63,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="1K",
         help='Overall image resolution: "0.5K", "1K", or "2K" (default: 1K).',
     )
-    arguments = parser.parse_args(argv)
+    return parser.parse_args()
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the illustration generation entrypoint.
+
+    Parameters
+    ----------
+    argv:
+        Optional command-line argument sequence.
+
+    Returns
+    -------
+    int
+        Process exit status.
+    """
 
     logging.basicConfig(
         level=logging.INFO,
@@ -84,6 +86,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         stream=sys.stdout,
     )
 
+    arguments = load_parameters()
     _validate_comfyui_model_arguments(arguments)
 
     logger.info("Starting illustration pipeline for %s.", arguments.storybook)
@@ -101,7 +104,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _validate_comfyui_model_arguments(arguments: argparse.Namespace) -> None:
+def _validate_comfyui_model_arguments(arguments: Namespace) -> None:
     """Validate and resolve model-related arguments for the ComfyUI provider.
 
     When ``--checkpoint`` is provided alongside diffusion parameters, a

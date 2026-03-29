@@ -1,11 +1,13 @@
-"""Analyse the segmentation by performing consistency diagnosis & prompt anchor expansion."""
+"""
+Analyse the anchoring consistency of the provided segmentation.
+"""
 
 from __future__ import annotations
 
-import argparse
 import logging
 import re
 import sys
+from argparse import ArgumentParser, Namespace
 from collections import Counter
 from pathlib import Path
 from typing import Sequence
@@ -18,6 +20,33 @@ logger = logging.getLogger(__name__)
 
 _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
 _STORYBOOK_FILENAME = "story.json"
+
+
+def load_parameters() -> Namespace:
+    parser = ArgumentParser(
+        description="Analyse segmentation consistency (anchor count, prompt with anchor expansion).",
+    )
+    parser.add_argument(
+        "--storybook",
+        required=True,
+        type=Path,
+        help="Path to the story folder (must contain story.json).",
+    )
+    parser.add_argument(
+        "--output-file",
+        required=False,
+        default=None,
+        type=Path,
+        help="Optional path to a Markdown output file.",
+    )
+    parser.add_argument(
+        "--scenes",
+        nargs="*",
+        type=str,
+        default=None,
+        help="Scene labels to include (all scenes if omitted).",
+    )
+    return parser.parse_args()
 
 
 def count_anchor_occurrences(storybook: Storybook) -> dict[str, int]:
@@ -71,8 +100,8 @@ def build_anchor_occurrence_report(storybook: Storybook) -> str:
 
 
 def build_storybook_skeleton_markdown(
-    storybook: Storybook,
-    scene_labels: list[str] | None = None,
+        storybook: Storybook,
+        scene_labels: list[str] | None = None,
 ) -> str:
     """Build the Markdown skeleton for a segmented storybook.
 
@@ -123,9 +152,9 @@ def build_storybook_skeleton_markdown(
 
 
 def export_storybook_skeleton(
-    story_directory: Path,
-    output_filepath: Path | None = None,
-    scene_labels: list[str] | None = None,
+        story_directory: Path,
+        output_filepath: Path | None = None,
+        scene_labels: list[str] | None = None,
 ) -> None:
     """Print (and optionally write) a Markdown story skeleton.
 
@@ -163,31 +192,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     int
         Process exit status.
     """
-
-    parser = argparse.ArgumentParser(
-        description="Analyse segmentation consistency (anchor count, prompt with anchor expansion).",
-    )
-    parser.add_argument(
-        "--storybook",
-        required=True,
-        type=Path,
-        help="Path to the story folder (must contain story.json).",
-    )
-    parser.add_argument(
-        "--output-file",
-        required=False,
-        default=None,
-        type=Path,
-        help="Optional path to a Markdown output file.",
-    )
-    parser.add_argument(
-        "--scenes",
-        nargs="*",
-        type=str,
-        default=None,
-        help="Scene labels to include (all scenes if omitted).",
-    )
-    arguments = parser.parse_args(argv)
+    arguments = load_parameters()
     export_storybook_skeleton(
         arguments.storybook,
         arguments.output_file,
