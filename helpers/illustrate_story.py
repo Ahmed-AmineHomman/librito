@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import logging
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from pathlib import Path
+from textwrap import dedent
 from typing import Sequence
+
+import logging
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -21,15 +23,57 @@ logger = logging.getLogger(__name__)
 
 
 def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
+    """Parse command-line arguments.
+
+    Parameters
+    ----------
+    argv:
+        Optional command-line argument sequence.
+
+    Returns
+    -------
+    Namespace
+        Parsed command-line arguments.
+    """
+
     parser = ArgumentParser(
-        description="Generate illustrations for a segmented storybook.",
+        description=dedent(
+            """
+            Generate illustrations for a segmented storybook.
+
+            Use this after segmentation to turn ``story.json`` scenes into image
+            files under ``illustrations/``. By default the script skips scenes
+            whose ``image_path`` already points to an existing file, so runs are
+            resumable. You can also restrict generation to selected scenes.
+            """
+        ).strip(),
+        epilog=dedent(
+            """
+            Behavior:
+              - reads ``database/<story>/story.json``
+              - builds one final prompt per generated scene
+              - writes images to ``database/<story>/illustrations/``
+              - updates each generated scene's ``image_path`` in place
+
+            Selection:
+              - omit --scenes to process the full storybook
+              - pass --scenes to generate only selected labels
+              - use --force to regenerate scenes even when the image already exists
+
+            Examples:
+              python helpers/illustrate_story.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
+              python helpers/illustrate_story.py --story leo --provider mock --model mock --scenes scene-01 scene-04
+              python helpers/illustrate_story.py --story leo --provider comfyui --model flux1-dev.safetensors --scenes scene-03 --force
+            """
+        ).strip(),
+        formatter_class=RawDescriptionHelpFormatter,
     )
     add_logging_arguments(parser)
     parser.add_argument(
         "--story",
         required=True,
         type=str,
-        help="Story identifier stored under ./database/<story>/.",
+        help="Story folder name under ./database/<story>/.",
     )
     parser.add_argument(
         "--provider",
@@ -45,17 +89,24 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser.add_argument(
         "--aspect-ratio",
         default="1:1",
-        help="Image aspect ratio (default: 1:1).",
+        help="Requested image aspect ratio.",
     )
     parser.add_argument(
         "--resolution",
         default="1K",
-        help='Overall image resolution: "0.5K", "1K", or "2K" (default: 1K).',
+        help='Requested image resolution: "0.5K", "1K", or "2K".',
     )
     parser.add_argument(
         "--force",
         action="store_true",
         help="Regenerate images even when a scene already points to an existing file.",
+    )
+    parser.add_argument(
+        "--scenes",
+        action="extend",
+        nargs="+",
+        type=str,
+        help="Optional scene labels to generate. Defaults to all storybook scenes.",
     )
     return parser.parse_args(argv)
 
@@ -82,6 +133,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     story_path = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", story_path)
     storybook = load_storybook(story_path)
+    selected_scene_positions = _resolve_scene_positions(
+        available_labels=[scene.label for scene in storybook.scenes],
+        requested_labels=arguments.scenes,
+    )
 
     output_directory = workspace.illustrations_dir
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -93,18 +148,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         image_size=arguments.resolution,
     )
 
-    total_scenes = len(storybook.scenes)
+    total_scenes = len(selected_scene_positions)
     logger.info(
         "Starting illustration generation for story '%s' with %d scene(s).",
         workspace.story,
         total_scenes,
     )
 
-    for scene_position, scene in enumerate(storybook.scenes, start=1):
+    for selection_position, scene_position in enumerate(selected_scene_positions, start=1):
+        scene = storybook.scenes[scene_position - 1]
         if not arguments.force and scene.image_path and (workspace.directory / scene.image_path).exists():
             logger.info(
                 "Scene %d/%d (%s): skipping (image already exists).",
-                scene_position,
+                selection_position,
                 total_scenes,
                 scene.label,
             )
@@ -112,7 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         logger.info(
             "Scene %d/%d (%s): generating illustration...",
-            scene_position,
+            selection_position,
             total_scenes,
             scene.label,
         )
@@ -129,7 +185,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         logger.info(
             "Scene %d/%d (%s): saved to %s.",
-            scene_position,
+            selection_position,
             total_scenes,
             scene.label,
             scene.image_path,
@@ -138,6 +194,71 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.info("Illustration generation complete.")
     logger.info("Done.")
     return 0
+
+
+def _resolve_scene_positions(
+        available_labels: Sequence[str],
+        requested_labels: Sequence[str] | None,
+) -> list[int]:
+    """Resolve selected scene labels to 1-based scene positions.
+
+    Parameters
+    ----------
+    available_labels:
+        Scene labels present in the storybook, in story order.
+    requested_labels:
+        Optional scene labels explicitly requested by the caller.
+
+    Returns
+    -------
+    list[int]
+        Selected 1-based scene positions in story order.
+
+    Raises
+    ------
+    SystemExit
+        If any requested scene labels are unknown.
+    """
+
+    if not requested_labels:
+        return list(range(1, len(available_labels) + 1))
+
+    deduplicated_labels = _deduplicate(requested_labels)
+    available_label_set = set(available_labels)
+    unknown_labels = [label for label in deduplicated_labels if label not in available_label_set]
+    if unknown_labels:
+        raise SystemExit(f"Unknown scene label(s): {', '.join(unknown_labels)}")
+
+    requested_label_set = set(deduplicated_labels)
+    return [
+        position
+        for position, label in enumerate(available_labels, start=1)
+        if label in requested_label_set
+    ]
+
+
+def _deduplicate(values: Sequence[str]) -> list[str]:
+    """Return values without duplicates while preserving first-seen order.
+
+    Parameters
+    ----------
+    values:
+        Input strings in arbitrary order.
+
+    Returns
+    -------
+    list[str]
+        Deduplicated values.
+    """
+
+    ordered_values: list[str] = []
+    seen_values: set[str] = set()
+    for value in values:
+        if value in seen_values:
+            continue
+        seen_values.add(value)
+        ordered_values.append(value)
+    return ordered_values
 
 
 if __name__ == "__main__":

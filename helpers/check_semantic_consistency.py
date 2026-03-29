@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 import math
 import statistics
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from pathlib import Path
+from textwrap import dedent
 from typing import Sequence
+
+import logging
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -25,36 +27,105 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     """Parse command-line arguments."""
 
     parser = ArgumentParser(
-        description="Analyse semantic consistency between scene texts and normalized story units.",
+        description=dedent(
+            """
+            Check how well storybook scenes align with normalized story units.
+
+            Use this after segmentation when you want a semantic sanity check
+            between ``story.json`` scenes and ``units.json``. The script always
+            computes global scores across the full story, then optionally expands
+            selected scenes for closer inspection.
+            """
+        ).strip(),
+        epilog=dedent(
+            """
+            Detail modes:
+              summary   Global score summary only.
+              selected  Global summary plus the scenes listed with --scenes.
+              all       Global summary plus every scene.
+
+            Typical use:
+              1. Run the default summary view to check the story globally.
+              2. If needed, rerun with --details selected --scenes ... to inspect
+                 the scenes that look suspicious.
+
+            Examples:
+              python helpers/check_semantic_consistency.py --story leo --provider mock --model mock
+              python helpers/check_semantic_consistency.py --story leo --provider lms --model text-embedding-3-small --details selected --scenes scene-01 scene-04
+              python helpers/check_semantic_consistency.py --story leo --provider gemini --model text-embedding-004 --details all
+            """
+        ).strip(),
+        formatter_class=RawDescriptionHelpFormatter,
     )
     add_logging_arguments(parser)
     parser.add_argument(
         "--story",
         required=True,
         type=str,
-        help="Story identifier stored under ./database/<story>/.",
+        help="Story folder name under ./database/<story>/.",
     )
     parser.add_argument(
         "--provider",
         required=True,
         choices=["gemini", "lms", "mock"],
-        help="Embedding provider.",
+        help="Embedding provider used to compute scene and unit embeddings.",
     )
     parser.add_argument(
         "--model",
         required=True,
-        help="Embedding model.",
+        help="Embedding model identifier for the selected provider.",
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--details",
+        default="summary",
+        choices=["summary", "selected", "all"],
+        help="Report detail level: summary, selected scenes, or all scenes.",
+    )
+    parser.add_argument(
+        "--scenes",
+        action="extend",
+        nargs="+",
+        type=str,
+        help="Scene labels to expand when --details selected is used.",
+    )
+    arguments = parser.parse_args(argv)
+    if arguments.details == "selected" and not arguments.scenes:
+        parser.error("The --scenes option is required when --details selected is used.")
+    if arguments.details != "selected" and arguments.scenes:
+        parser.error("The --scenes option can only be used with --details selected.")
+    return arguments
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the semantic consistency helper."""
+def build_semantic_report(
+        story: str,
+        provider: str,
+        model: str,
+        details: str,
+        scenes: Sequence[str] | None = None,
+) -> str:
+    """Build a Markdown semantic consistency report.
 
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    logger.info("Starting semantic consistency check for story '%s'.", arguments.story)
-    workspace = StoryWorkspace.from_story(arguments.story)
+    Parameters
+    ----------
+    story:
+        Story identifier stored under ``database/``.
+    provider:
+        Embedding provider name.
+    model:
+        Embedding model name.
+    details:
+        Detail level for the report.
+    scenes:
+        Optional scene labels to expand when ``details`` is ``selected``.
+
+    Returns
+    -------
+    str
+        Markdown report suitable for stdout.
+    """
+
+    requested_scenes = _deduplicate(scenes or [])
+    workspace = StoryWorkspace.from_story(story)
     workspace.require_directory()
     storybook_path = workspace.require_storybook_file()
     units_path = workspace.require_units_file()
@@ -62,13 +133,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     storybook = load_storybook(storybook_path)
     logger.info("Loading normalized story from %s.", units_path)
     normalized_story = load_normalized_story(units_path)
-    logger.info("Building embedding client (provider=%s, model=%s).", arguments.provider, arguments.model)
-    client = build_embedding_client(provider=arguments.provider, model=arguments.model)
 
     if not storybook.scenes:
         raise ValueError("The storybook does not contain any scenes to evaluate.")
     if not normalized_story.units:
         raise ValueError("The normalized story does not contain any units to evaluate.")
+
+    selected_scene_labels = _resolve_scene_labels(
+        available_labels=[scene.label for scene in storybook.scenes],
+        details=details,
+        requested_labels=requested_scenes,
+    )
+    logger.info("Building embedding client (provider=%s, model=%s).", provider, model)
+    client = build_embedding_client(provider=provider, model=model)
 
     logger.info(
         "Computing semantic similarity for %d scene(s) against %d unit(s).",
@@ -99,16 +176,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
         )
 
+    scene_scores_by_label = {
+        str(item["scene_label"]): item
+        for item in scene_scores
+    }
     scores = [float(item["score"]) for item in scene_scores]
     lines = [
         "# Semantic Consistency Report",
         "",
         f"- **Story:** {workspace.story}",
         f"- **Title:** {storybook.title}",
-        f"- **Provider:** {arguments.provider}",
-        f"- **Model:** {arguments.model}",
+        f"- **Provider:** {provider}",
+        f"- **Model:** {model}",
         f"- **Scenes:** {len(storybook.scenes)}",
         f"- **Story units:** {len(normalized_story.units)}",
+        f"- **Detail mode:** {details}",
         "",
         "## Score Summary",
         "",
@@ -120,26 +202,114 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"| Minimum | {min(scores):.4f} |",
         f"| Median | {statistics.median(scores):.4f} |",
         f"| Maximum | {max(scores):.4f} |",
-        "",
-        "## Scene Breakdown",
     ]
 
-    for item in scene_scores:
+    if details != "summary":
         lines.extend(
             [
                 "",
-                f"### {item['scene_label']}",
+                "## Scene Breakdown",
                 "",
-                f"- **Score:** {float(item['score']):.4f}",
-                f"- **Best unit:** {item['unit_label']} ({item['unit_type']})",
-                f"- **Scene excerpt:** {_shorten(str(item['scene_text']))}",
-                f"- **Best-match excerpt:** {_shorten(str(item['unit_text']))}",
+                f"- **Scenes detailed:** {len(selected_scene_labels)}",
             ]
         )
+        for label in selected_scene_labels:
+            item = scene_scores_by_label[label]
+            lines.extend(
+                [
+                    "",
+                    f"### {item['scene_label']}",
+                    "",
+                    f"- **Score:** {float(item['score']):.4f}",
+                    f"- **Best unit:** {item['unit_label']} ({item['unit_type']})",
+                    f"- **Scene excerpt:** {_shorten(str(item['scene_text']))}",
+                    f"- **Best-match excerpt:** {_shorten(str(item['unit_text']))}",
+                ]
+            )
 
-    sys.stdout.write("\n".join(lines) + "\n")
     logger.info("Semantic consistency check complete.")
+    return "\n".join(lines)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the semantic consistency helper."""
+
+    arguments = load_parameters(argv)
+    configure_logging(arguments.log_level)
+    logger.info("Starting semantic consistency check for story '%s'.", arguments.story)
+    sys.stdout.write(
+        build_semantic_report(
+            story=arguments.story,
+            provider=arguments.provider,
+            model=arguments.model,
+            details=arguments.details,
+            scenes=arguments.scenes,
+        )
+        + "\n"
+    )
     return 0
+
+
+def _resolve_scene_labels(
+        available_labels: Sequence[str],
+        details: str,
+        requested_labels: Sequence[str],
+) -> list[str]:
+    """Resolve which scene labels should receive detailed output.
+
+    Parameters
+    ----------
+    available_labels:
+        Scene labels present in the storybook, in story order.
+    details:
+        Requested detail level.
+    requested_labels:
+        Scene labels explicitly requested by the caller.
+
+    Returns
+    -------
+    list[str]
+        Scene labels to expand in the report.
+
+    Raises
+    ------
+    SystemExit
+        If the requested labels include unknown scenes.
+    """
+
+    if details == "summary":
+        return []
+    if details == "all":
+        return list(available_labels)
+
+    unknown_labels = [label for label in requested_labels if label not in set(available_labels)]
+    if unknown_labels:
+        raise SystemExit(f"Unknown scene label(s): {', '.join(unknown_labels)}")
+    return list(requested_labels)
+
+
+def _deduplicate(values: Sequence[str]) -> list[str]:
+    """Return values without duplicates while preserving their first-seen order.
+
+    Parameters
+    ----------
+    values:
+        Input strings in arbitrary order.
+
+    Returns
+    -------
+    list[str]
+        Deduplicated values.
+    """
+
+    ordered_values: list[str] = []
+    seen_values: set[str] = set()
+    for value in values:
+        if value in seen_values:
+            continue
+        seen_values.add(value)
+        ordered_values.append(value)
+    return ordered_values
 
 
 def _cosine_similarity(first: Sequence[float], second: Sequence[float]) -> float:

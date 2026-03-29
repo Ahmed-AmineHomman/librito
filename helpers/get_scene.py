@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import logging
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from pathlib import Path
+from textwrap import dedent
 from typing import Sequence
+
+import logging
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -34,18 +36,46 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     """
 
     parser = ArgumentParser(
-        description="Return selected scene text and/or prompt attributes as Markdown.",
+        description=dedent(
+            """
+            Inspect one or more scenes from a segmented storybook.
+
+            Use this when you already know which scene labels you want to inspect
+            and need the scene text, the raw prompt, or the expanded prompt with
+            anchors resolved to their descriptions.
+            """
+        ).strip(),
+        epilog=dedent(
+            """
+            Output behavior:
+              - prints one Markdown section per requested scene
+              - keeps the requested scene order
+              - optionally expands prompt anchors with --expand
+
+            Typical use:
+              - inspect scene text after segmentation edits
+              - inspect raw prompts before illustration generation
+              - inspect expanded prompts after a global anchor check
+
+            Examples:
+              python helpers/get_scene.py --story leo --scenes scene-01 --attributes text
+              python helpers/get_scene.py --story leo --scenes scene-01 scene-04 --attributes prompt --expand
+              python helpers/get_scene.py --story leo --scenes scene-01 --scenes scene-04 --attributes text --attributes prompt
+            """
+        ).strip(),
+        formatter_class=RawDescriptionHelpFormatter,
     )
     add_logging_arguments(parser)
     parser.add_argument(
         "--story",
         required=True,
         type=str,
-        help="Story identifier stored under ./database/<story>/.",
+        help="Story folder name under ./database/<story>/.",
     )
     parser.add_argument(
-        "--labels",
+        "--scenes",
         required=True,
+        action="extend",
         nargs="+",
         type=str,
         help="Scene labels to inspect.",
@@ -53,10 +83,11 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser.add_argument(
         "--attributes",
         required=True,
+        action="extend",
         nargs="+",
         choices=["text", "prompt"],
         type=str,
-        help="Attributes to print for each selected scene.",
+        help="Scene attributes to print for each selected scene.",
     )
     parser.add_argument(
         "--expand",
@@ -67,10 +98,10 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
 
 
 def build_scene_report(
-    story: str,
-    labels: Sequence[str],
-    attributes: Sequence[str],
-    expand_prompts: bool,
+        story: str,
+        scenes: Sequence[str],
+        attributes: Sequence[str],
+        expand_prompts: bool,
 ) -> str:
     """Build a Markdown report for the requested scenes.
 
@@ -78,7 +109,7 @@ def build_scene_report(
     ----------
     story:
         Story identifier stored under ``database/``.
-    labels:
+    scenes:
         Scene labels to include, in output order.
     attributes:
         Attribute names to include for each scene.
@@ -100,7 +131,7 @@ def build_scene_report(
     logger.info("Loading storybook from %s.", storybook_path)
     storybook = load_storybook(storybook_path)
     scenes_by_label = {scene.label: scene for scene in storybook.scenes}
-    missing_labels = [label for label in labels if label not in scenes_by_label]
+    missing_labels = [label for label in scenes if label not in scenes_by_label]
     if missing_labels:
         raise SystemExit(f"Unknown scene label(s): {', '.join(missing_labels)}")
 
@@ -111,7 +142,7 @@ def build_scene_report(
     logger.info(
         "Building scene report for story '%s' with %d scene(s), attributes=%s, prompt_mode=%s.",
         workspace.story,
-        len(labels),
+        len(scenes),
         requested_attributes,
         prompt_mode,
     )
@@ -123,13 +154,13 @@ def build_scene_report(
                 "",
                 f"- **Story:** {workspace.story}",
                 f"- **Title:** {storybook.title}",
-                f"- **Scenes requested:** {len(labels)}",
+                f"- **Scenes requested:** {len(scenes)}",
                 f"- **Attributes:** {requested_attributes}",
                 f"- **Prompt mode:** {prompt_mode}",
             ]
         )
     ]
-    for label in labels:
+    for label in scenes:
         scene = scenes_by_label[label]
         blocks = [f"## {scene.label}"]
         for attribute in attributes:
@@ -168,7 +199,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     sys.stdout.write(
         build_scene_report(
             story=arguments.story,
-            labels=arguments.labels,
+            scenes=arguments.scenes,
             attributes=arguments.attributes,
             expand_prompts=arguments.expand,
         )
