@@ -7,6 +7,9 @@ import os
 
 from google.adk.models.lite_llm import LiteLlm
 
+from librito.embedding_clients import EmbeddingClient
+from librito.embedding_clients.gemini import GeminiEmbeddingClient
+from librito.embedding_clients.lms import LMStudioEmbeddingClient
 from librito.image_clients import ImageClient
 from librito.image_clients.comfyui import ComfyUIImageClient
 from librito.image_clients.gemini import GeminiImageClient
@@ -148,6 +151,42 @@ def build_image_client(
         )
 
     raise ValueError(f"Unsupported image provider: {provider}.")
+
+
+def build_embedding_client(
+    *,
+    provider: str,
+    model: str,
+) -> EmbeddingClient:
+    """Build the embedding client used by evaluation and helper workflows.
+
+    Parameters
+    ----------
+    provider:
+        Embedding provider name.
+    model:
+        Model identifier understood by the selected provider.
+
+    Returns
+    -------
+    EmbeddingClient
+        Ready-to-use embedding client for the selected backend.
+
+    Raises
+    ------
+    ValueError
+        If the provider is unknown.
+    """
+
+    if provider == "gemini":
+        logger.info("Using Gemini embedding provider.")
+        return GeminiEmbeddingClient(model=model)
+
+    if provider == "lms":
+        logger.info("Using LM Studio embedding provider.")
+        return LMStudioEmbeddingClient(model=model)
+
+    raise ValueError(f"Unsupported embedding provider: {provider}.")
 
 
 def normalize_openai_compatible_api_base(api_base: str) -> str:
