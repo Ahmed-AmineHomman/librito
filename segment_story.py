@@ -1,7 +1,7 @@
 """Run the story-segmentation agent on a filesystem-backed draft.
 
-The ``--storybook`` argument points to a story folder (e.g.
-``./database/my-story/``).  The script expects the following convention
+The ``--story`` argument identifies a canonical story workspace under
+``./database/<story>/``. The script expects the following convention
 inside that folder:
 
 * ``story.md`` — full source story text,
@@ -11,10 +11,10 @@ inside that folder:
 Story loading behavior:
 
 * when ``--story-file`` is provided, its content is copied into
-  ``<storybook>/story.md`` before the agent starts, overriding any
+  ``<story workspace>/story.md`` before the agent starts, overriding any
   existing file there;
 * when ``--story-file`` is omitted, the script expects an existing
-  ``<storybook>/story.md`` file and loads the source story from it;
+  ``<story workspace>/story.md`` file and loads the source story from it;
 * the script raises if the expected story file is missing, unreadable, or empty.
 
 Provider-specific authentication:
@@ -39,6 +39,8 @@ from google.adk.events.event import Event
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from librito.logging import add_logging_arguments
+from librito.logging import configure_logging
 from librito.io import load_storybook
 from librito.io import save_storybook
 from librito.models import Storybook
@@ -47,13 +49,11 @@ from librito.segmentation.session import SegmentationSession
 from librito.segmentation.tools import _STATE_SEGMENTATION_DONE
 from librito.segmentation.tools import _STATE_SEGMENTATION_SUMMARY
 from librito.segmentation.tools import build_toolset
+from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
 
 _APP_NAME = "librito_story_segmentation"
-_DEFAULT_EXPORT_FILENAME = "story.json"
-_DEFAULT_DRAFT_FILENAME = "story.segmentation.draft.json"
-_DEFAULT_STORY_FILENAME = "story.md"
 _RESOURCE_DIRECTORY = resources.files("librito.resources")
 _SEGMENTATION_INSTRUCTION_FILENAME = "segmentation_agent_instruction.txt"
 
@@ -68,17 +68,18 @@ def _parse_arguments() -> argparse.Namespace:
     """
 
     parser = argparse.ArgumentParser(description="Run the story-segmentation agent.")
+    add_logging_arguments(parser)
     parser.add_argument(
-        "--storybook",
+        "--story",
         required=True,
-        type=Path,
-        help="Path to the story folder (must contain or will receive story.md).",
+        type=str,
+        help="Story identifier stored under ./database/<story>/.",
     )
     parser.add_argument(
         "--story-file",
         type=Path,
         default=None,
-        help="Optional source story file. When provided, it overrides <storybook>/story.md before the run.",
+        help="Optional source story file. When provided, it overrides ./database/<story>/story.md before the run.",
     )
     parser.add_argument(
         "--provider",
@@ -105,11 +106,16 @@ def _load_segmentation_agent_instruction() -> str:
     ).strip()
 
 
-def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
+def _prepare_session(
+    workspace: StoryWorkspace,
+    arguments: argparse.Namespace,
+) -> SegmentationSession:
     """Prepare the filesystem-backed session paths.
 
     Parameters
     ----------
+    workspace:
+        Canonical workspace for the selected story.
     arguments:
         Parsed CLI arguments.
 
@@ -119,11 +125,10 @@ def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
         Ready-to-use segmentation session.
     """
 
-    story_directory = arguments.storybook
-    story_directory.mkdir(parents=True, exist_ok=True)
-    logger.info("Story directory: %s.", story_directory)
+    workspace.ensure_directory()
+    logger.info("Story directory: %s.", workspace.directory)
 
-    story_path = story_directory / _DEFAULT_STORY_FILENAME
+    story_path = workspace.story_file
     if arguments.story_file is not None:
         story_text = _read_story_text(arguments.story_file)
         story_path.write_text(story_text, encoding="utf-8")
@@ -139,21 +144,21 @@ def _prepare_session(arguments: argparse.Namespace) -> SegmentationSession:
 
     session = SegmentationSession(
         story_path=story_path,
-        draft_path=story_directory / _DEFAULT_DRAFT_FILENAME,
-        export_path=story_directory / _DEFAULT_EXPORT_FILENAME,
+        draft_path=workspace.draft_file,
+        export_path=workspace.storybook_file,
     )
     _prepare_draft(session)
     logger.info("Segmentation session ready (draft: %s, export: %s).", session.draft_path, session.export_path)
     return session
 
 
-def _build_prompt(story_directory: Path) -> str:
+def _build_prompt(workspace: StoryWorkspace) -> str:
     """Build the single user prompt used to drive the segmentation run.
 
     Parameters
     ----------
-    story_directory:
-        Story folder path.
+    workspace:
+        Canonical workspace for the selected story.
 
     Returns
     -------
@@ -161,9 +166,8 @@ def _build_prompt(story_directory: Path) -> str:
         Initial user prompt sent to the agent.
     """
 
-    label = story_directory.name
     return (
-        f"Segment the story stored for label '{label}'. "
+        f"Segment the story stored for label '{workspace.story}'. "
         "Inspect the story and current state with tools, build or refine the segmentation, "
         "export only if needed, and call finish_segmentation when the work is complete."
     )
@@ -292,16 +296,16 @@ async def _run() -> int:
     """
 
     arguments = _parse_arguments()
+    configure_logging(arguments.log_level)
+    workspace = StoryWorkspace.from_story(arguments.story)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        stream=sys.stdout,
+    logger.info(
+        "Starting segmentation for '%s' (provider: %s, model: %s).",
+        workspace.story,
+        arguments.provider,
+        arguments.model,
     )
-
-    logger.info("Starting segmentation for '%s' (provider: %s, model: %s).",
-                arguments.storybook, arguments.provider, arguments.model)
-    session = _prepare_session(arguments)
+    session = _prepare_session(workspace, arguments)
 
     logger.info("Building segmentation agent...")
     agent = LlmAgent(
@@ -327,7 +331,7 @@ async def _run() -> int:
     )
     user_message = types.Content(
         role="user",
-        parts=[types.Part(text=_build_prompt(arguments.storybook))],
+        parts=[types.Part(text=_build_prompt(workspace))],
     )
 
     logger.info("Running segmentation agent...")

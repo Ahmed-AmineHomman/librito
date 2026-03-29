@@ -60,7 +60,7 @@ To create or resume a segmented story with the segmentation agent:
 
 .. code-block:: bash
 
-    python segment_story.py --storybook database/leo --story-file docs/examples/leo/story.md --provider gemini --model gemini-2.0-flash
+    python segment_story.py --story leo --story-file docs/examples/leo/story.md --provider gemini --model gemini-2.0-flash
 
 To resume an existing draft, omit ``--story-file``.
 
@@ -69,20 +69,20 @@ illustrations for a segmented story:
 
 .. code-block:: bash
 
-    python illustrate_story.py --storybook path/to/story-folder
+    python illustrate_story.py --story leo
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-    .\.venv\Scripts\python.exe illustrate_story.py --storybook .\path\to\story-folder
+    .\.venv\Scripts\python.exe illustrate_story.py --story leo
 
 A sample segmented story is available at ``docs/examples/leo/story.json``.
 
-This command reads the segmented story, generates missing scene illustrations,
-writes them into the ``illustrations/`` subdirectory inside the story folder, and
-updates each scene's ``image_path`` in place. Already generated scenes are
-skipped automatically (see :doc:`illustration_generation`).
+This command reads ``database/leo/story.json``, generates missing scene
+illustrations inside ``database/leo/illustrations/``, and updates each scene's
+``image_path`` in place. Already generated scenes are skipped automatically
+(see :doc:`illustration_generation`).
 
 Documentation
 =============

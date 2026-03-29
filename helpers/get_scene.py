@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -10,11 +11,12 @@ from typing import Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook
 from librito.prompt_builder import expand_prompt_anchors
+from librito.workspace import StoryWorkspace
 
-_DATABASE_DIRECTORY = Path(__file__).resolve().parent.parent / "database"
-_STORYBOOK_FILENAME = "story.json"
+logger = logging.getLogger(__name__)
 
 
 def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
@@ -34,11 +36,12 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description="Return selected scene text and/or prompt attributes as Markdown.",
     )
+    add_logging_arguments(parser)
     parser.add_argument(
-        "--storybook",
+        "--story",
         required=True,
         type=str,
-        help="Storybook label. Files are resolved from ./database/<label>/.",
+        help="Story identifier stored under ./database/<story>/.",
     )
     parser.add_argument(
         "--labels",
@@ -64,7 +67,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
 
 
 def build_scene_report(
-    storybook_label: str,
+    story: str,
     labels: Sequence[str],
     attributes: Sequence[str],
     expand_prompts: bool,
@@ -73,8 +76,8 @@ def build_scene_report(
 
     Parameters
     ----------
-    storybook_label:
-        Storybook label stored under ``database/``.
+    story:
+        Story identifier stored under ``database/``.
     labels:
         Scene labels to include, in output order.
     attributes:
@@ -91,20 +94,41 @@ def build_scene_report(
     if expand_prompts and "prompt" not in attributes:
         raise SystemExit("The --expand flag can only be used when 'prompt' is requested.")
 
-    story_directory = _DATABASE_DIRECTORY / storybook_label
-    storybook_path = story_directory / _STORYBOOK_FILENAME
-    if not story_directory.is_dir():
-        raise SystemExit(f"Missing story directory: {story_directory}")
-    if not storybook_path.is_file():
-        raise SystemExit(f"Missing required file: {storybook_path}")
-
+    workspace = StoryWorkspace.from_story(story)
+    workspace.require_directory()
+    storybook_path = workspace.require_storybook_file()
+    logger.info("Loading storybook from %s.", storybook_path)
     storybook = load_storybook(storybook_path)
     scenes_by_label = {scene.label: scene for scene in storybook.scenes}
     missing_labels = [label for label in labels if label not in scenes_by_label]
     if missing_labels:
         raise SystemExit(f"Unknown scene label(s): {', '.join(missing_labels)}")
 
-    sections: list[str] = []
+    requested_attributes = ", ".join(attributes)
+    prompt_mode = "expanded" if expand_prompts else "raw"
+    if "prompt" not in attributes:
+        prompt_mode = "not requested"
+    logger.info(
+        "Building scene report for story '%s' with %d scene(s), attributes=%s, prompt_mode=%s.",
+        workspace.story,
+        len(labels),
+        requested_attributes,
+        prompt_mode,
+    )
+
+    sections: list[str] = [
+        "\n".join(
+            [
+                "# Scene Report",
+                "",
+                f"- **Story:** {workspace.story}",
+                f"- **Title:** {storybook.title}",
+                f"- **Scenes requested:** {len(labels)}",
+                f"- **Attributes:** {requested_attributes}",
+                f"- **Prompt mode:** {prompt_mode}",
+            ]
+        )
+    ]
     for label in labels:
         scene = scenes_by_label[label]
         blocks = [f"## {scene.label}"]
@@ -139,15 +163,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
 
     arguments = load_parameters(argv)
+    configure_logging(arguments.log_level)
+    logger.info("Starting scene report generation for story '%s'.", arguments.story)
     sys.stdout.write(
         build_scene_report(
-            storybook_label=arguments.storybook,
+            story=arguments.story,
             labels=arguments.labels,
             attributes=arguments.attributes,
             expand_prompts=arguments.expand,
         )
         + "\n"
     )
+    logger.info("Scene report generation complete.")
     return 0
 
 

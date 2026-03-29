@@ -17,13 +17,13 @@ From the repository root:
 
 .. code-block:: bash
 
-   python illustrate_story.py --storybook path/to/story-folder
+   python illustrate_story.py --story leo
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-   .\.venv\Scripts\python.exe illustrate_story.py --storybook .\path\to\story-folder
+   .\.venv\Scripts\python.exe illustrate_story.py --story leo
 
 What the Command Does
 ---------------------
@@ -120,11 +120,11 @@ generation rules.
 Output Layout
 -------------
 
-For a story stored at ``path/to/story-folder``, a successful run produces:
+For a story identified as ``leo``, a successful run produces:
 
 .. code-block:: text
 
-   path/to/story-folder/
+   database/leo/
    ├── illustrations/
    │   ├── scene-001.png
    │   ├── scene-002.png

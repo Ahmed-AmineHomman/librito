@@ -1,6 +1,4 @@
-"""
-Analyse the anchoring consistency of the provided segmentation.
-"""
+"""Check anchor usage consistency in a segmented storybook."""
 
 from __future__ import annotations
 
@@ -8,182 +6,210 @@ import logging
 import re
 import sys
 from argparse import ArgumentParser, Namespace
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Sequence
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook
 from librito.models import Storybook
-from librito.prompt_builder import expand_prompt_anchors
-
-logger = logging.getLogger(__name__)
+from librito.workspace import StoryWorkspace
 
 _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
-_STORYBOOK_FILENAME = "story.json"
+logger = logging.getLogger(__name__)
 
 
-def load_parameters() -> Namespace:
+def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
+    """Parse command-line arguments.
+
+    Parameters
+    ----------
+    argv:
+        Optional command-line argument sequence.
+
+    Returns
+    -------
+    Namespace
+        Parsed command-line arguments.
+    """
+
     parser = ArgumentParser(
-        description="Analyse segmentation consistency (anchor count, prompt with anchor expansion).",
+        description="Check anchoring consistency for a storybook and print a Markdown report.",
     )
+    add_logging_arguments(parser)
     parser.add_argument(
-        "--storybook",
+        "--story",
         required=True,
-        type=Path,
-        help="Path to the story folder (must contain story.json).",
-    )
-    parser.add_argument(
-        "--output-file",
-        required=False,
-        default=None,
-        type=Path,
-        help="Optional path to a Markdown output file.",
-    )
-    parser.add_argument(
-        "--scenes",
-        nargs="*",
         type=str,
-        default=None,
-        help="Scene labels to include (all scenes if omitted).",
+        help="Story identifier stored under ./database/<story>/.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def count_anchor_occurrences(storybook: Storybook) -> dict[str, int]:
-    """Count recurring concept anchor occurrences across all scene prompts.
+def build_anchor_report(story: str) -> str:
+    """Build a Markdown anchoring consistency report.
 
     Parameters
     ----------
-    storybook:
-        Parsed storybook definition loaded from JSON.
-
-    Returns
-    -------
-    dict[str, int]
-        Mapping from each defined recurring concept anchor to the number of
-        times it appears in the raw scene prompts across the full storybook.
-    """
-
-    counts: Counter[str] = Counter(
-        anchor
-        for scene in storybook.scenes
-        for anchor in _ANCHOR_PATTERN.findall(scene.prompt)
-    )
-    return {
-        anchor: counts.get(anchor, 0)
-        for anchor in sorted(storybook.recurring_concepts)
-    }
-
-
-def build_anchor_occurrence_report(storybook: Storybook) -> str:
-    """Build a textual report describing anchor usage across the storybook.
-
-    Parameters
-    ----------
-    storybook:
-        Parsed storybook definition loaded from JSON.
+    story:
+        Story identifier stored under ``database/``.
 
     Returns
     -------
     str
-        Human-readable anchor occurrence report suitable for stdout.
+        Markdown report suitable for stdout.
     """
 
-    counts = count_anchor_occurrences(storybook)
-    lines = ["Anchor occurrences:"]
-    lines.extend(f"- {anchor}: {count}" for anchor, count in counts.items())
-    single_use_anchors = [anchor for anchor, count in counts.items() if count == 1]
-    if single_use_anchors:
-        anchor_list = ", ".join(single_use_anchors)
-        lines.append(f"WARNING: single-use anchors detected: {anchor_list}")
-    return "\n".join(lines)
+    workspace = StoryWorkspace.from_story(story)
+    workspace.require_directory()
+    input_json = workspace.require_storybook_file()
+    logger.info("Loading storybook from %s.", input_json)
+    storybook = load_storybook(input_json)
+    defined_anchors = set(storybook.recurring_concepts)
+    occurrence_counts: Counter[str] = Counter()
+    scene_counts: Counter[str] = Counter()
+    scene_labels_by_anchor: dict[str, list[str]] = defaultdict(list)
+    undefined_anchors: dict[str, list[str]] = defaultdict(list)
+    undefined_seen: dict[str, set[str]] = defaultdict(set)
 
-
-def build_storybook_skeleton_markdown(
-        storybook: Storybook,
-        scene_labels: list[str] | None = None,
-) -> str:
-    """Build the Markdown skeleton for a segmented storybook.
-
-    Only anchor expansion is performed; style and constraints are omitted so
-    the output focuses on prompt consistency.
-
-    Parameters
-    ----------
-    storybook:
-        Parsed storybook definition loaded from JSON.
-    scene_labels:
-        Optional list of scene labels to include.  When ``None`` or empty, all
-        scenes are included.
-
-    Returns
-    -------
-    str
-        Markdown content containing one section per scene with text and the
-        anchor-expanded prompt.
-    """
-
-    sections: list[str] = []
     for scene in storybook.scenes:
-        if scene_labels and scene.label not in scene_labels:
-            continue
-        expanded_prompt = expand_prompt_anchors(
-            scene.prompt,
-            storybook.recurring_concepts,
-        ).strip()
-        scene_name = scene.label
-        sections.append(
-            "\n".join(
-                [
-                    f"## {scene_name}",
-                    "",
-                    "### Text",
-                    "",
-                    scene.text.strip(),
-                    "",
-                    "### Prompt",
-                    "",
-                    expanded_prompt,
-                ]
+        anchors_in_scene = _ANCHOR_PATTERN.findall(scene.prompt)
+        occurrence_counts.update(anchors_in_scene)
+
+        seen_in_scene: set[str] = set()
+        for anchor in anchors_in_scene:
+            if anchor not in defined_anchors:
+                if scene.label not in undefined_seen[anchor]:
+                    undefined_seen[anchor].add(scene.label)
+                    undefined_anchors[anchor].append(scene.label)
+                continue
+            if anchor in seen_in_scene:
+                continue
+            seen_in_scene.add(anchor)
+            scene_counts[anchor] += 1
+            scene_labels_by_anchor[anchor].append(scene.label)
+
+    unused_anchors = sorted(anchor for anchor in defined_anchors if occurrence_counts[anchor] == 0)
+    single_scene_anchors = sorted(anchor for anchor in defined_anchors if scene_counts[anchor] == 1)
+    undefined_anchor_names = sorted(undefined_anchors)
+    is_consistent = not undefined_anchor_names and not unused_anchors and not single_scene_anchors
+    logger.info(
+        "Anchoring analysis complete for story '%s': undefined=%d, unused=%d, single_scene=%d.",
+        workspace.story,
+        len(undefined_anchor_names),
+        len(unused_anchors),
+        len(single_scene_anchors),
+    )
+
+    lines = [
+        "# Anchoring Consistency Report",
+        "",
+        f"- **Story:** {workspace.story}",
+        f"- **Title:** {storybook.title}",
+        f"- **Scenes:** {len(storybook.scenes)}",
+        f"- **Defined recurring concepts:** {len(storybook.recurring_concepts)}",
+        f"- **Result:** {'PASS' if is_consistent else 'FAIL'}",
+        "",
+        "## Summary",
+        "",
+        "| Metric | Value |",
+        "| --- | ---: |",
+        f"| Undefined anchors | {len(undefined_anchor_names)} |",
+        f"| Unused recurring concepts | {len(unused_anchors)} |",
+        f"| Single-scene recurring concepts | {len(single_scene_anchors)} |",
+        "",
+        "## Checks",
+        "",
+        _format_check(
+            "Undefined anchors in prompts",
+            undefined_anchor_names,
+            undefined_anchors,
+        ),
+        _format_check(
+            "Unused recurring concepts",
+            unused_anchors,
+        ),
+        _format_check(
+            "Recurring concepts used in only one scene",
+            single_scene_anchors,
+            scene_labels_by_anchor,
+        ),
+        "",
+        "## Anchor Usage",
+        "",
+        "| Anchor | Prompt occurrences | Scenes | Status |",
+        "| --- | ---: | --- | --- |",
+    ]
+
+    for anchor in sorted(defined_anchors):
+        usage_status = "ok"
+        if anchor in unused_anchors:
+            usage_status = "unused"
+        elif anchor in single_scene_anchors:
+            usage_status = "single-scene"
+
+        lines.append(
+            "| {anchor} | {occurrences} | {scenes} | {status} |".format(
+                anchor=anchor,
+                occurrences=occurrence_counts[anchor],
+                scenes=", ".join(scene_labels_by_anchor.get(anchor, [])) or "-",
+                status=usage_status,
             )
         )
 
-    return "\n\n".join(sections).rstrip() + "\n"
+    if undefined_anchor_names:
+        lines.extend(
+            [
+                "",
+                "## Undefined Anchor Details",
+                "",
+                "| Anchor | Scenes |",
+                "| --- | --- |",
+            ]
+        )
+        for anchor in undefined_anchor_names:
+            lines.append(f"| {anchor} | {', '.join(undefined_anchors[anchor])} |")
+
+    return "\n".join(lines)
 
 
-def export_storybook_skeleton(
-        story_directory: Path,
-        output_filepath: Path | None = None,
-        scene_labels: list[str] | None = None,
-) -> None:
-    """Print (and optionally write) a Markdown story skeleton.
+def _format_check(
+    title: str,
+    anchors: Sequence[str],
+    details: dict[str, list[str]] | None = None,
+) -> str:
+    """Format one checklist item for the Markdown report.
 
     Parameters
     ----------
-    story_directory:
-        Path to the story folder containing ``story.json``.
-    output_filepath:
-        Optional destination path for the generated Markdown file.
-    scene_labels:
-        Optional scene labels to include.
+    title:
+        Human-readable check title.
+    anchors:
+        Anchors involved in the finding.
+    details:
+        Optional scene labels associated with each anchor.
+
+    Returns
+    -------
+    str
+        Formatted Markdown bullet.
     """
 
-    input_json = story_directory / _STORYBOOK_FILENAME
-    logger.info("Loading storybook from %s.", input_json)
-    storybook = load_storybook(input_json)
-    report = build_anchor_occurrence_report(storybook)
-    markdown = build_storybook_skeleton_markdown(storybook, scene_labels)
-    sys.stdout.write(f"{report}\n\n{markdown}")
-    if output_filepath is not None:
-        output_filepath.parent.mkdir(parents=True, exist_ok=True)
-        output_filepath.write_text(markdown, encoding="utf-8")
+    if not anchors:
+        return f"- [x] {title}"
+
+    if details is None:
+        return f"- [ ] {title}: {', '.join(anchors)}"
+
+    formatted_items = [f"{anchor} ({', '.join(details[anchor])})" for anchor in anchors]
+    return f"- [ ] {title}: {', '.join(formatted_items)}"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the storybook skeleton exporter.
+    """Run the anchoring consistency helper.
 
     Parameters
     ----------
@@ -195,12 +221,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     int
         Process exit status.
     """
-    arguments = load_parameters()
-    export_storybook_skeleton(
-        arguments.storybook,
-        arguments.output_file,
-        arguments.scenes,
-    )
+
+    arguments = load_parameters(argv)
+    configure_logging(arguments.log_level)
+    logger.info("Starting anchoring consistency check for story '%s'.", arguments.story)
+    sys.stdout.write(build_anchor_report(arguments.story) + "\n")
+    logger.info("Anchoring consistency check complete.")
     return 0
 
 

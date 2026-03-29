@@ -3,21 +3,18 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from librito.image_clients import ImageClient
 from librito.io import load_storybook, save_storybook
 from librito.providers import build_image_client
 from librito.prompt_builder import build_scene_prompt
+from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
 
-_OUTPUT_DIRECTORY_NAME = "illustrations"
-_STORYBOOK_FILENAME = "story.json"
-
 
 def generate_story_illustrations(
-    story_directory: Path,
+    workspace: StoryWorkspace,
     client: ImageClient | None = None,
     *,
     provider: str = "gemini",
@@ -32,8 +29,8 @@ def generate_story_illustrations(
 
     Parameters
     ----------
-    story_directory:
-        Path to the story folder containing ``story.json``.
+    workspace:
+        Canonical workspace for the story to illustrate.
     client:
         Optional preconfigured image client used mainly for tests.
     provider:
@@ -52,10 +49,10 @@ def generate_story_illustrations(
         Requested overall image resolution.
     """
 
-    story_path = story_directory / _STORYBOOK_FILENAME
+    story_path = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", story_path)
     storybook = load_storybook(story_path)
-    output_directory = story_directory / _OUTPUT_DIRECTORY_NAME
+    output_directory = workspace.illustrations_dir
     output_directory.mkdir(parents=True, exist_ok=True)
 
     if client is None:
@@ -70,10 +67,14 @@ def generate_story_illustrations(
         )
 
     total_scenes = len(storybook.scenes)
-    logger.info("Starting illustration generation for %d scene(s).", total_scenes)
+    logger.info(
+        "Starting illustration generation for story '%s' with %d scene(s).",
+        workspace.story,
+        total_scenes,
+    )
 
     for scene_position, scene in enumerate(storybook.scenes, start=1):
-        if scene.image_path and (story_directory / scene.image_path).exists():
+        if scene.image_path and (workspace.directory / scene.image_path).exists():
             logger.info(
                 "Scene %d/%d (%s): skipping (image already exists).",
                 scene_position,
@@ -95,7 +96,7 @@ def generate_story_illustrations(
         generated_image = client.generate_image(prompt)
         output_path = output_directory / f"scene-{scene_position:03d}.png"
         generated_image.save(output_path)
-        scene.image_path = output_path.relative_to(story_directory).as_posix()
+        scene.image_path = output_path.relative_to(workspace.directory).as_posix()
         save_storybook(storybook, story_path)
         logger.info(
             "Scene %d/%d (%s): saved to %s.",

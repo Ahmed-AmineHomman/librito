@@ -12,20 +12,23 @@ from typing import Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from librito.logging import add_logging_arguments, configure_logging
 from librito.generate_illustrations import generate_story_illustrations
+from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
 
 
-def load_parameters() -> Namespace:
+def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description="Generate illustrations for a segmented storybook.",
     )
+    add_logging_arguments(parser)
     parser.add_argument(
-        "--storybook",
+        "--story",
         required=True,
-        type=Path,
-        help="Path to the story folder (must contain story.json).",
+        type=str,
+        help="Story identifier stored under ./database/<story>/.",
     )
     parser.add_argument(
         "--provider",
@@ -66,7 +69,7 @@ def load_parameters() -> Namespace:
         default="1K",
         help='Overall image resolution: "0.5K", "1K", or "2K" (default: 1K).',
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -83,18 +86,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         Process exit status.
     """
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        stream=sys.stdout,
-    )
-
-    arguments = load_parameters()
+    arguments = load_parameters(argv)
+    configure_logging(arguments.log_level)
     _validate_comfyui_model_arguments(arguments)
+    workspace = StoryWorkspace.from_story(arguments.story)
 
-    logger.info("Starting illustration pipeline for %s.", arguments.storybook)
+    logger.info("Starting illustration pipeline for story '%s'.", workspace.story)
     generate_story_illustrations(
-        arguments.storybook,
+        workspace,
         provider=arguments.provider,
         checkpoint=arguments.checkpoint,
         diffusion_model=arguments.diffusion_model,

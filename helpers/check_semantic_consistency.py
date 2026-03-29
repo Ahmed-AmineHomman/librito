@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import statistics
 import sys
@@ -12,12 +13,12 @@ from typing import Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_normalized_story, load_storybook
 from librito.providers import build_embedding_client
+from librito.workspace import StoryWorkspace
 
-_DATABASE_DIRECTORY = Path(__file__).resolve().parent.parent / "database"
-_STORYBOOK_FILENAME = "story.json"
-_UNITS_FILENAME = "units.json"
+logger = logging.getLogger(__name__)
 
 
 def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
@@ -26,11 +27,12 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description="Analyse semantic consistency between scene texts and normalized story units.",
     )
+    add_logging_arguments(parser)
     parser.add_argument(
-        "--storybook",
+        "--story",
         required=True,
         type=str,
-        help="Storybook label. Files are resolved from ./database/<label>/.",
+        help="Story identifier stored under ./database/<story>/.",
     )
     parser.add_argument(
         "--provider",
@@ -50,18 +52,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the semantic consistency helper."""
 
     arguments = load_parameters(argv)
-    story_directory = _DATABASE_DIRECTORY / arguments.storybook
-    storybook_path = story_directory / _STORYBOOK_FILENAME
-    units_path = story_directory / _UNITS_FILENAME
-    if not story_directory.is_dir():
-        raise SystemExit(f"Missing story directory: {story_directory}")
-    if not storybook_path.is_file():
-        raise SystemExit(f"Missing required file: {storybook_path}")
-    if not units_path.is_file():
-        raise SystemExit(f"Missing required file: {units_path}")
-
+    configure_logging(arguments.log_level)
+    logger.info("Starting semantic consistency check for story '%s'.", arguments.story)
+    workspace = StoryWorkspace.from_story(arguments.story)
+    workspace.require_directory()
+    storybook_path = workspace.require_storybook_file()
+    units_path = workspace.require_units_file()
+    logger.info("Loading storybook from %s.", storybook_path)
     storybook = load_storybook(storybook_path)
+    logger.info("Loading normalized story from %s.", units_path)
     normalized_story = load_normalized_story(units_path)
+    logger.info("Building embedding client (provider=%s, model=%s).", arguments.provider, arguments.model)
     client = build_embedding_client(provider=arguments.provider, model=arguments.model)
 
     if not storybook.scenes:
@@ -69,6 +70,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not normalized_story.units:
         raise ValueError("The normalized story does not contain any units to evaluate.")
 
+    logger.info(
+        "Computing semantic similarity for %d scene(s) against %d unit(s).",
+        len(storybook.scenes),
+        len(normalized_story.units),
+    )
     unit_embeddings = client.embed_texts([unit.text for unit in normalized_story.units])
     scene_embeddings = client.embed_texts([scene.text for scene in storybook.scenes])
 
@@ -95,35 +101,44 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     scores = [float(item["score"]) for item in scene_scores]
     lines = [
-        "Semantic consistency report",
-        f"Title: {storybook.title}",
-        f"Provider: {arguments.provider}",
-        f"Model: {arguments.model}",
-        f"Scenes: {len(storybook.scenes)}",
-        f"Story units: {len(normalized_story.units)}",
+        "# Semantic Consistency Report",
         "",
-        "Score summary:",
-        f"- count: {len(scores)}",
-        f"- mean: {statistics.fmean(scores):.4f}",
-        f"- std: {statistics.pstdev(scores) if len(scores) > 1 else 0.0:.4f}",
-        f"- min: {min(scores):.4f}",
-        f"- median: {statistics.median(scores):.4f}",
-        f"- max: {max(scores):.4f}",
+        f"- **Story:** {workspace.story}",
+        f"- **Title:** {storybook.title}",
+        f"- **Provider:** {arguments.provider}",
+        f"- **Model:** {arguments.model}",
+        f"- **Scenes:** {len(storybook.scenes)}",
+        f"- **Story units:** {len(normalized_story.units)}",
         "",
-        "Scene breakdown:",
+        "## Score Summary",
+        "",
+        "| Metric | Value |",
+        "| --- | ---: |",
+        f"| Count | {len(scores)} |",
+        f"| Mean | {statistics.fmean(scores):.4f} |",
+        f"| Standard deviation | {statistics.pstdev(scores) if len(scores) > 1 else 0.0:.4f} |",
+        f"| Minimum | {min(scores):.4f} |",
+        f"| Median | {statistics.median(scores):.4f} |",
+        f"| Maximum | {max(scores):.4f} |",
+        "",
+        "## Scene Breakdown",
     ]
 
     for item in scene_scores:
         lines.extend(
             [
-                f"- {item['scene_label']}: {float(item['score']):.4f}",
-                f"  best unit: {item['unit_label']} ({item['unit_type']})",
-                f"  scene: {_shorten(str(item['scene_text']))}",
-                f"  match: {_shorten(str(item['unit_text']))}",
+                "",
+                f"### {item['scene_label']}",
+                "",
+                f"- **Score:** {float(item['score']):.4f}",
+                f"- **Best unit:** {item['unit_label']} ({item['unit_type']})",
+                f"- **Scene excerpt:** {_shorten(str(item['scene_text']))}",
+                f"- **Best-match excerpt:** {_shorten(str(item['unit_text']))}",
             ]
         )
 
     sys.stdout.write("\n".join(lines) + "\n")
+    logger.info("Semantic consistency check complete.")
     return 0
 
 
