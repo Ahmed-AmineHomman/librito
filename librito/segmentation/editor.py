@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from librito.io import load_storybook, save_storybook
 from librito.models import StoryScene, Storybook
 from librito.segmentation.session import SegmentationSession
 from librito.segmentation.validators import (
@@ -13,8 +14,6 @@ from librito.segmentation.validators import (
     expand_prompt_for_scene,
     normalize_anchor_tag,
 )
-from librito.story_io import load_storybook
-from librito.story_io import save_storybook
 
 _GENERATED_SCENE_LABEL_PATTERN = re.compile(r"^scene-(\d{3})$")
 
@@ -53,7 +52,7 @@ class StorybookEditor:
             Draft title.
         """
 
-        return self._load().title
+        return load_storybook(self._session.draft_path).title
 
     def set_title(self, title: str) -> None:
         """Set the draft title.
@@ -64,9 +63,9 @@ class StorybookEditor:
             New title value.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         storybook.title = title.strip()
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def get_style(self) -> str:
         """Return the current global style.
@@ -77,7 +76,7 @@ class StorybookEditor:
             Draft style description.
         """
 
-        return self._load().style
+        return load_storybook(self._session.draft_path).style
 
     def set_style(self, style: str) -> None:
         """Set the draft style.
@@ -88,9 +87,9 @@ class StorybookEditor:
             New global style description.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         storybook.style = style.strip()
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def get_constraints(self) -> str:
         """Return the current global constraints string.
@@ -101,7 +100,7 @@ class StorybookEditor:
             Draft constraints string.
         """
 
-        return self._load().constraints
+        return load_storybook(self._session.draft_path).constraints
 
     def set_constraints(self, constraints: str) -> None:
         """Set the draft constraints string.
@@ -112,9 +111,9 @@ class StorybookEditor:
             New constraints text.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         storybook.constraints = constraints.strip()
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def list_concepts(self) -> dict[str, str]:
         """Return the currently defined recurring concepts.
@@ -125,7 +124,7 @@ class StorybookEditor:
             Copy of the concept mapping.
         """
 
-        return dict(self._load().recurring_concepts)
+        return dict(load_storybook(self._session.draft_path).recurring_concepts)
 
     def add_concept(self, tag: str, value: str) -> None:
         """Add a recurring concept definition.
@@ -145,12 +144,12 @@ class StorybookEditor:
 
         normalized_tag = normalize_anchor_tag(tag)
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         if normalized_tag in storybook.recurring_concepts:
             raise ValueError(f"Recurring concept already exists: {normalized_tag}.")
 
         storybook.recurring_concepts[normalized_tag] = value.strip()
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def remove_concept(self, tag: str) -> None:
         """Remove a recurring concept definition.
@@ -167,12 +166,12 @@ class StorybookEditor:
         """
 
         normalized_tag = normalize_anchor_tag(tag)
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         try:
             del storybook.recurring_concepts[normalized_tag]
         except KeyError as error:
             raise ValueError(f"Unknown recurring concept: {normalized_tag}.") from error
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def rename_concept(self, old_tag: str, new_tag: str) -> None:
         """Rename a recurring concept and update scene prompts accordingly.
@@ -188,7 +187,7 @@ class StorybookEditor:
         normalized_old_tag = normalize_anchor_tag(old_tag)
         normalized_new_tag = normalize_anchor_tag(new_tag)
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         if normalized_old_tag not in storybook.recurring_concepts:
             raise ValueError(f"Unknown recurring concept: {normalized_old_tag}.")
         if normalized_new_tag != normalized_old_tag and normalized_new_tag in storybook.recurring_concepts:
@@ -198,7 +197,7 @@ class StorybookEditor:
         storybook.recurring_concepts[normalized_new_tag] = concept_value
         for scene in storybook.scenes:
             scene.prompt = scene.prompt.replace(normalized_old_tag, normalized_new_tag)
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def list_scenes(self) -> list[dict[str, str]]:
         """Return a summary of existing scenes.
@@ -215,7 +214,7 @@ class StorybookEditor:
                 "text": scene.text,
                 "prompt": scene.prompt,
             }
-            for scene in self._load().scenes
+            for scene in load_storybook(self._session.draft_path).scenes
         ]
 
     def add_scene(
@@ -245,7 +244,7 @@ class StorybookEditor:
             Label assigned to the new scene.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         assigned_label = label.strip() if label is not None else self._generate_scene_label(storybook)
         self._validate_scene_label(storybook, assigned_label)
         scene = StoryScene(
@@ -256,7 +255,7 @@ class StorybookEditor:
         )
         insertion_index = self._resolve_insert_index(position, len(storybook.scenes))
         storybook.scenes.insert(insertion_index, scene)
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
         return assigned_label
 
     def update_scene(
@@ -281,7 +280,7 @@ class StorybookEditor:
             Optional replacement label.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         scene = self._get_scene(storybook, label)
         if text is not None:
             scene.text = text.strip()
@@ -291,7 +290,7 @@ class StorybookEditor:
             normalized_new_label = new_label.strip()
             self._validate_scene_label(storybook, normalized_new_label, current_label=scene.label)
             scene.label = normalized_new_label
-        self._save(storybook)
+        save_storybook(storybook, self._session.draft_path)
 
     def move_scene(self, label: str, position: int) -> None:
         """Move a scene to another position in the ordered scene list.
@@ -304,13 +303,13 @@ class StorybookEditor:
             Target 1-based position.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         for scene_index, scene in enumerate(storybook.scenes):
             if scene.label == label:
                 moved_scene = storybook.scenes.pop(scene_index)
                 insertion_index = self._resolve_insert_index(position, len(storybook.scenes))
                 storybook.scenes.insert(insertion_index, moved_scene)
-                self._save(storybook)
+                save_storybook(storybook, self._session.draft_path)
                 return
         raise ValueError(f"Unknown scene label: {label}.")
 
@@ -323,11 +322,11 @@ class StorybookEditor:
             Scene label to remove.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         for scene_index, scene in enumerate(storybook.scenes):
             if scene.label == label:
                 del storybook.scenes[scene_index]
-                self._save(storybook)
+                save_storybook(storybook, self._session.draft_path)
                 return
         raise ValueError(f"Unknown scene label: {label}.")
 
@@ -340,7 +339,7 @@ class StorybookEditor:
             Usage statistics keyed by anchor tag.
         """
 
-        return count_concept_occurrences(self._load())
+        return count_concept_occurrences(load_storybook(self._session.draft_path))
 
     def check_prompt_consistency(self) -> dict[str, object]:
         """Check prompt-consistency rules on the current draft.
@@ -351,7 +350,7 @@ class StorybookEditor:
             Prompt-consistency report.
         """
 
-        return check_prompt_consistency(self._load())
+        return check_prompt_consistency(load_storybook(self._session.draft_path))
 
     def expand_prompt(
         self,
@@ -376,7 +375,7 @@ class StorybookEditor:
             scenes.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         selected_scenes = self._select_scenes(storybook, labels)
         expanded = {
             scene.label: expand_prompt_for_scene(storybook, scene, full=full)
@@ -409,7 +408,7 @@ class StorybookEditor:
             several scenes.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         selected_scenes = self._select_scenes(storybook, labels)
         payload = [
             {
@@ -437,34 +436,12 @@ class StorybookEditor:
             If prompt-consistency validation fails.
         """
 
-        storybook = self._load()
+        storybook = load_storybook(self._session.draft_path)
         report = check_prompt_consistency(storybook)
         if not bool(report["is_valid"]):
             raise ValueError(f"Prompt consistency validation failed: {report}.")
         save_storybook(storybook, self._session.export_path)
         return self._session.export_path
-
-    def _load(self) -> Storybook:
-        """Load the current draft storybook.
-
-        Returns
-        -------
-        Storybook
-            Current draft storybook.
-        """
-
-        return load_storybook(self._session.draft_path)
-
-    def _save(self, storybook: Storybook) -> None:
-        """Persist the updated draft storybook.
-
-        Parameters
-        ----------
-        storybook:
-            Draft storybook to persist.
-        """
-
-        save_storybook(storybook, self._session.draft_path)
 
     def _get_scene(self, storybook: Storybook, label: str) -> StoryScene:
         """Resolve a scene by label.

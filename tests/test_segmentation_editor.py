@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 
 from librito.models import Storybook
+from librito.io import save_storybook
 from librito.segmentation.editor import StorybookEditor
 from librito.segmentation.session import SegmentationSession
-from librito.story_io import save_storybook
 
 from tests.conftest import workspace_temporary_directory
 

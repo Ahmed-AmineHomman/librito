@@ -39,14 +39,14 @@ from google.adk.events.event import Event
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
+from librito.io import load_storybook
+from librito.io import save_storybook
 from librito.models import Storybook
 from librito.providers import build_segmentation_model
 from librito.segmentation.session import SegmentationSession
 from librito.segmentation.tools import _STATE_SEGMENTATION_DONE
 from librito.segmentation.tools import _STATE_SEGMENTATION_SUMMARY
 from librito.segmentation.tools import build_toolset
-from librito.story_io import load_storybook
-from librito.story_io import save_storybook
 
 logger = logging.getLogger(__name__)
 

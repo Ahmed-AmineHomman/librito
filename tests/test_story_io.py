@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from librito.story_io import load_storybook, save_storybook
+from librito.io import load_storybook, save_storybook
 
 from tests.conftest import workspace_temporary_directory
 

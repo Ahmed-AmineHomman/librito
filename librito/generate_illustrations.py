@@ -6,9 +6,9 @@ import logging
 from pathlib import Path
 
 from librito.image_clients import ImageClient
+from librito.io import load_storybook, save_storybook
 from librito.providers import build_image_client
 from librito.prompt_builder import build_scene_prompt
-from librito.story_io import load_storybook, save_storybook
 
 logger = logging.getLogger(__name__)
 

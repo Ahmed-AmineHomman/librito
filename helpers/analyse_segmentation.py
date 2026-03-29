@@ -10,9 +10,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
+from librito.io import load_storybook
 from librito.models import Storybook
 from librito.prompt_builder import expand_prompt_anchors
-from librito.story_io import load_storybook
 
 logger = logging.getLogger(__name__)
 

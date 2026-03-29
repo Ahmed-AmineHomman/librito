@@ -55,8 +55,8 @@ class Storybook:
 
 
 @dataclass(slots=True)
-class NormalizedUnit:
-    """Single normalized evaluation unit.
+class StoryUnit:
+    """Single normalized story unit.
 
     Parameters
     ----------
@@ -84,4 +84,4 @@ class NormalizedStory:
         Ordered normalized units extracted from the source story.
     """
 
-    units: list[NormalizedUnit]
+    units: list[StoryUnit]
