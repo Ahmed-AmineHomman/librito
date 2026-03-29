@@ -69,13 +69,13 @@ illustrations for a segmented story:
 
 .. code-block:: bash
 
-    python illustrate_story.py --story leo
+    python helpers/illustrate_story.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-    .\.venv\Scripts\python.exe illustrate_story.py --story leo
+    .\.venv\Scripts\python.exe helpers/illustrate_story.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
 
 A sample segmented story is available at ``docs/examples/leo/story.json``.
 

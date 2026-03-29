@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 _RESOURCE_DIRECTORY = resources.files("librito.resources")
 _CHECKPOINT_WORKFLOW_FILENAME = "workflow_checkpoint.json"
-_DIFFUSION_WORKFLOW_FILENAME = "workflow_diffusion.json"
 
 # Node IDs in workflow_checkpoint.json
 _CKP_SAMPLER_NODE_ID = "3"
@@ -30,15 +29,6 @@ _CKP_CHECKPOINT_NODE_ID = "4"
 _CKP_LATENT_NODE_ID = "5"
 _CKP_PROMPT_NODE_ID = "6"
 _CKP_OUTPUT_NODE_ID = "9"
-
-# Node IDs in workflow_diffusion.json
-_DIF_UNET_NODE_ID = "1"
-_DIF_CLIP_NODE_ID = "2"
-_DIF_VAE_NODE_ID = "3"
-_DIF_LATENT_NODE_ID = "5"
-_DIF_PROMPT_NODE_ID = "6"
-_DIF_SAMPLER_NODE_ID = "8"
-_DIF_OUTPUT_NODE_ID = "11"
 
 _SERVER_URL_ENV_VAR = "COMFYUI_API_URL"
 _API_KEY_ENV_VAR = "COMFYUI_API_KEY"
@@ -52,19 +42,15 @@ class ComfyUIImageClientError(RuntimeError):
 class ComfyUIImageClient:
     """Image generation client backed by a ComfyUI instance.
 
-    Loads either the checkpoint or diffusion workflow template (depending on
-    the provided configuration), injects prompt, model(s), and dimensions,
-    submits the workflow via the ComfyUI REST API, then polls for the result
-    and downloads the generated image.
+    Loads the checkpoint workflow template, injects prompt, checkpoint, and
+    dimensions, submits the workflow via the ComfyUI REST API, then polls for
+    the result and downloads the generated image.
     """
 
     def __init__(
             self,
             *,
-            checkpoint: str = "",
-            diffusion_model: str = "",
-            clip: str = "",
-            vae: str = "",
+            checkpoint: str,
             aspect_ratio: str = "1:1",
             image_size: str = "1K",
     ) -> None:
@@ -74,12 +60,6 @@ class ComfyUIImageClient:
         ----------
         checkpoint:
             Checkpoint filename for the checkpoint workflow.
-        diffusion_model:
-            UNET model filename for the diffusion workflow.
-        clip:
-            CLIP model filename for the diffusion workflow.
-        vae:
-            VAE model filename for the diffusion workflow.
         aspect_ratio:
             Requested image aspect ratio.
         image_size:
@@ -89,59 +69,24 @@ class ComfyUIImageClient:
         server_url = os.getenv(_SERVER_URL_ENV_VAR, "").strip()
         if not server_url:
             raise RuntimeError(f"Missing required environment variable: {_SERVER_URL_ENV_VAR}.")
-        if checkpoint and (diffusion_model or clip or vae):
-            raise ValueError("Checkpoint and diffusion parameters are mutually exclusive.")
-        if not checkpoint and not (diffusion_model and clip and vae):
-            raise ValueError(
-                "Provide either checkpoint or all of diffusion_model, clip, and vae."
-            )
+        if not checkpoint.strip():
+            raise ValueError("Checkpoint filename must be a non-empty string.")
 
         self._server_url = server_url.rstrip("/")
-        self._is_checkpoint_mode = bool(checkpoint)
         self._width, self._height = compute_dimensions(
             aspect_ratio,
             image_size,
         )
-
-        if self._is_checkpoint_mode:
-            self._checkpoint = self._resolve_server_model(
-                checkpoint,
-                "CheckpointLoaderSimple",
-                "ckpt_name",
-                "checkpoint",
-            )
-            workflow_filename = _CHECKPOINT_WORKFLOW_FILENAME
-            self._output_node_id = _CKP_OUTPUT_NODE_ID
-            logger.info("ComfyUI client initialised in checkpoint mode (model: %s).", self._checkpoint)
-        else:
-            self._diffusion_model = self._resolve_server_model(
-                diffusion_model,
-                "UNETLoader",
-                "unet_name",
-                "diffusion model",
-            )
-            self._clip = self._resolve_server_model(
-                clip,
-                "CLIPLoader",
-                "clip_name",
-                "CLIP model",
-            )
-            self._vae = self._resolve_server_model(
-                vae,
-                "VAELoader",
-                "vae_name",
-                "VAE model",
-            )
-            workflow_filename = _DIFFUSION_WORKFLOW_FILENAME
-            self._output_node_id = _DIF_OUTPUT_NODE_ID
-            logger.info(
-                "ComfyUI client initialised in diffusion mode (unet: %s, clip: %s, vae: %s).",
-                self._diffusion_model,
-                self._clip,
-                self._vae,
-            )
+        self._checkpoint = self._resolve_server_model(
+            checkpoint,
+            "CheckpointLoaderSimple",
+            "ckpt_name",
+            "checkpoint",
+        )
+        self._output_node_id = _CKP_OUTPUT_NODE_ID
+        logger.info("ComfyUI client initialised with checkpoint %s.", self._checkpoint)
         self._workflow_template = json.loads(
-            _RESOURCE_DIRECTORY.joinpath(workflow_filename).read_text(encoding="utf-8")
+            _RESOURCE_DIRECTORY.joinpath(_CHECKPOINT_WORKFLOW_FILENAME).read_text(encoding="utf-8")
         )
 
     @staticmethod
@@ -244,22 +189,12 @@ class ComfyUIImageClient:
             If any step of the generation pipeline fails.
         """
 
-        if self._is_checkpoint_mode:
-            workflow = copy.deepcopy(self._workflow_template)
-            workflow[_CKP_SAMPLER_NODE_ID]["inputs"]["seed"] = random.randint(0, 2 ** 31 - 1)
-            workflow[_CKP_CHECKPOINT_NODE_ID]["inputs"]["ckpt_name"] = self._checkpoint
-            workflow[_CKP_LATENT_NODE_ID]["inputs"]["width"] = self._width
-            workflow[_CKP_LATENT_NODE_ID]["inputs"]["height"] = self._height
-            workflow[_CKP_PROMPT_NODE_ID]["inputs"]["text"] = prompt
-        else:
-            workflow = copy.deepcopy(self._workflow_template)
-            workflow[_DIF_SAMPLER_NODE_ID]["inputs"]["seed"] = random.randint(0, 2 ** 31 - 1)
-            workflow[_DIF_UNET_NODE_ID]["inputs"]["unet_name"] = self._diffusion_model
-            workflow[_DIF_CLIP_NODE_ID]["inputs"]["clip_name"] = self._clip
-            workflow[_DIF_VAE_NODE_ID]["inputs"]["vae_name"] = self._vae
-            workflow[_DIF_LATENT_NODE_ID]["inputs"]["width"] = self._width
-            workflow[_DIF_LATENT_NODE_ID]["inputs"]["height"] = self._height
-            workflow[_DIF_PROMPT_NODE_ID]["inputs"]["text"] = prompt
+        workflow = copy.deepcopy(self._workflow_template)
+        workflow[_CKP_SAMPLER_NODE_ID]["inputs"]["seed"] = random.randint(0, 2 ** 31 - 1)
+        workflow[_CKP_CHECKPOINT_NODE_ID]["inputs"]["ckpt_name"] = self._checkpoint
+        workflow[_CKP_LATENT_NODE_ID]["inputs"]["width"] = self._width
+        workflow[_CKP_LATENT_NODE_ID]["inputs"]["height"] = self._height
+        workflow[_CKP_PROMPT_NODE_ID]["inputs"]["text"] = prompt
 
         payload = json.dumps({"prompt": workflow}).encode("utf-8")
         submit_request = urllib.request.Request(

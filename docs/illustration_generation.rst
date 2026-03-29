@@ -17,13 +17,13 @@ From the repository root:
 
 .. code-block:: bash
 
-   python illustrate_story.py --story leo
+   python helpers/illustrate_story.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-   .\.venv\Scripts\python.exe illustrate_story.py --story leo
+   .\.venv\Scripts\python.exe helpers/illustrate_story.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
 
 What the Command Does
 ---------------------
@@ -45,6 +45,8 @@ Resume Behavior
 If a scene already has a non-empty ``image_path`` and the referenced file exists
 on disk, that scene is skipped. This makes interrupted runs resumable without
 regenerating every image.
+
+Use ``--force`` to ignore existing images and regenerate every scene in order.
 
 Prompt Construction
 -------------------
@@ -148,26 +150,26 @@ Supported Providers
 -------------------
 
 The table below lists the currently supported image generation APIs, their
-default models, and the environment variables used by each.
+model argument meaning, and the environment variables used by each.
 
 .. list-table::
    :header-rows: 1
    :widths: 20 35 25 20
 
    * - Provider
-     - Default Model
+     - ``--model`` meaning
      - Env Variables
       - Default Settings
    * - Google Gemini
-     - ``gemini-3.1-flash-image-preview``
+     - Gemini image model identifier
      - ``GEMINI_API_KEY``
      - 1:1 aspect ratio, 1K image size
    * - ComfyUI
-     - User-selected checkpoint or diffusion assets
+     - Checkpoint filename used with ``workflow_checkpoint.json``
      - ``COMFYUI_API_URL`` and optional ``COMFYUI_API_KEY``
      - 1:1 aspect ratio, 1K image size
    * - Mock
-     - Built-in deterministic mock client
+     - Ignored placeholder value
      - None
      - 1:1 aspect ratio, 1K image size
 
@@ -194,8 +196,8 @@ Current Limitations
 The current implementation does not provide:
 
 * a dry-run mode,
-* a single-scene generation flag,
-* command-line overrides for model, aspect ratio, or image size.
+* a single-scene generation flag.
 
 For debugging purposes, the generation script can be run with
-``--provider mock`` to produce pixel-noise images without calling a real API.
+``--provider mock --model mock`` to produce pixel-noise images without calling
+a real API.

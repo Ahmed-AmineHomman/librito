@@ -3,8 +3,8 @@
     "inputs": {
       "seed": 0,
       "steps": 25,
-      "cfg": 7,
-      "sampler_name": "dpmpp_2m_sde_gpu",
+      "cfg": 5,
+      "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 1,
       "model": [

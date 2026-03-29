@@ -73,11 +73,8 @@ def build_segmentation_model(
 
 def build_image_client(
     *,
-    provider: str = "gemini",
-    checkpoint: str | None = None,
-    diffusion_model: str | None = None,
-    clip: str | None = None,
-    vae: str | None = None,
+    provider: str,
+    model: str,
     aspect_ratio: str = "1:1",
     image_size: str = "1K",
 ) -> ImageClient:
@@ -87,15 +84,8 @@ def build_image_client(
     ----------
     provider:
         Image-generation provider name.
-    checkpoint:
-        Checkpoint filename for the ComfyUI checkpoint workflow, or optional
-        model override for Gemini.
-    diffusion_model:
-        UNET model filename for the ComfyUI diffusion workflow.
-    clip:
-        CLIP model filename for the ComfyUI diffusion workflow.
-    vae:
-        VAE model filename for the ComfyUI diffusion workflow.
+    model:
+        Image model identifier. For ComfyUI, this is the checkpoint filename.
     aspect_ratio:
         Requested image aspect ratio.
     image_size:
@@ -122,20 +112,9 @@ def build_image_client(
         ))
 
     if provider == "comfyui":
-        if not checkpoint and not (diffusion_model and clip and vae):
-            raise RuntimeError(
-                "ComfyUI provider requires either --checkpoint or all three of "
-                "--diffusion-model, --clip, and --vae."
-            )
-        logger.info(
-            "Using ComfyUI image provider (%s mode).",
-            "checkpoint" if checkpoint else "diffusion",
-        )
+        logger.info("Using ComfyUI image provider.")
         return ComfyUIImageClient(
-            checkpoint=checkpoint or "",
-            diffusion_model=diffusion_model or "",
-            clip=clip or "",
-            vae=vae or "",
+            checkpoint=model,
             aspect_ratio=aspect_ratio,
             image_size=image_size,
         )
@@ -143,7 +122,7 @@ def build_image_client(
     if provider == "gemini":
         logger.info("Using Gemini image provider.")
         return GeminiImageClient(
-            model=checkpoint or "gemini-3.1-flash-image-preview",
+            model=model,
             aspect_ratio=aspect_ratio,
             image_size=image_size,
         )
