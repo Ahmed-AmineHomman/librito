@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 
+from PIL import Image
 from google import genai
 from google.genai import types
-from PIL import Image
 
 _API_KEY_ENV_VAR = "GEMINI_API_KEY"
 
@@ -19,12 +19,12 @@ class GeminiImageClient:
     """Gemini image-generation client backed by the official SDK."""
 
     def __init__(
-        self,
-        *,
-        model: str = "gemini-3.1-flash-image-preview",
-        aspect_ratio: str = "1:1",
-        image_size: str = "1K",
-        timeout_seconds: float = 60.0,
+            self,
+            *,
+            model: str = "gemini-3.1-flash-image-preview",
+            aspect_ratio: str = "1:1",
+            image_size: str = "1K",
+            timeout_seconds: float = 60.0,
     ) -> None:
         """Initialize the client.
 

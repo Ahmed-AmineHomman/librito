@@ -19,10 +19,10 @@ class GeminiEmbeddingClient:
     """Gemini embedding client backed by the official SDK."""
 
     def __init__(
-        self,
-        *,
-        model: str,
-        timeout_seconds: float = 60.0,
+            self,
+            *,
+            model: str,
+            timeout_seconds: float = 60.0,
     ) -> None:
         """Initialize the client.
 

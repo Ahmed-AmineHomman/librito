@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import copy
-import io
 import json
-import logging
 import os
 import random
 import time
@@ -16,6 +14,8 @@ from importlib import resources
 
 from PIL import Image
 
+import io
+import logging
 from librito.image_clients.utils import compute_dimensions
 
 logger = logging.getLogger(__name__)

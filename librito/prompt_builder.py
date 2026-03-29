@@ -42,8 +42,8 @@ def expand_prompt_anchors(prompt: str, recurring_concepts: dict[str, str]) -> st
 
 
 def build_scene_prompt(
-    storybook: Storybook,
-    scene: StoryScene,
+        storybook: Storybook,
+        scene: StoryScene,
 ) -> str:
     """Build the final image-generation prompt for one scene.
 

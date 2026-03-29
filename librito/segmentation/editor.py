@@ -218,12 +218,12 @@ class StorybookEditor:
         ]
 
     def add_scene(
-        self,
-        text: str,
-        prompt: str,
-        *,
-        label: str | None = None,
-        position: int | None = None,
+            self,
+            text: str,
+            prompt: str,
+            *,
+            label: str | None = None,
+            position: int | None = None,
     ) -> str:
         """Add a new scene to the draft.
 
@@ -259,12 +259,12 @@ class StorybookEditor:
         return assigned_label
 
     def update_scene(
-        self,
-        label: str,
-        *,
-        text: str | None = None,
-        prompt: str | None = None,
-        new_label: str | None = None,
+            self,
+            label: str,
+            *,
+            text: str | None = None,
+            prompt: str | None = None,
+            new_label: str | None = None,
     ) -> None:
         """Update an existing scene.
 
@@ -353,10 +353,10 @@ class StorybookEditor:
         return check_prompt_consistency(load_storybook(self._session.draft_path))
 
     def expand_prompt(
-        self,
-        labels: str | list[str] | None = None,
-        *,
-        full: bool = False,
+            self,
+            labels: str | list[str] | None = None,
+            *,
+            full: bool = False,
     ) -> str | dict[str, str]:
         """Expand one or more scene prompts.
 
@@ -386,10 +386,10 @@ class StorybookEditor:
         return expanded
 
     def expand_scene(
-        self,
-        labels: str | list[str] | None = None,
-        *,
-        expand: bool = False,
+            self,
+            labels: str | list[str] | None = None,
+            *,
+            expand: bool = False,
     ) -> dict[str, str] | list[dict[str, str]]:
         """Return one or more scene payloads.
 
@@ -465,9 +465,9 @@ class StorybookEditor:
         raise ValueError(f"Unknown scene label: {label}.")
 
     def _select_scenes(
-        self,
-        storybook: Storybook,
-        labels: str | list[str] | None,
+            self,
+            storybook: Storybook,
+            labels: str | list[str] | None,
     ) -> list[StoryScene]:
         """Resolve one or more scenes preserving story order.
 
@@ -496,11 +496,11 @@ class StorybookEditor:
         return selected
 
     def _validate_scene_label(
-        self,
-        storybook: Storybook,
-        label: str,
-        *,
-        current_label: str | None = None,
+            self,
+            storybook: Storybook,
+            label: str,
+            *,
+            current_label: str | None = None,
     ) -> None:
         """Validate a scene label against uniqueness and basic shape rules.
 

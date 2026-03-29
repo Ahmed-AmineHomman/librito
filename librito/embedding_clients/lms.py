@@ -20,10 +20,10 @@ class LMStudioEmbeddingClient:
     """Embedding client backed by an OpenAI-compatible LM Studio endpoint."""
 
     def __init__(
-        self,
-        *,
-        model: str,
-        timeout_seconds: float = 60.0,
+            self,
+            *,
+            model: str,
+            timeout_seconds: float = 60.0,
     ) -> None:
         """Initialize the client.
 

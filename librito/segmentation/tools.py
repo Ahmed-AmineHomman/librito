@@ -117,11 +117,11 @@ def list_scenes(tool_context: ToolContext) -> dict[str, list[dict[str, str]]]:
 
 
 def add_scene(
-    text: str,
-    prompt: str,
-    label: str | None = None,
-    position: int | None = None,
-    tool_context: ToolContext | None = None,
+        text: str,
+        prompt: str,
+        label: str | None = None,
+        position: int | None = None,
+        tool_context: ToolContext | None = None,
 ) -> dict[str, Any]:
     """Add a new scene to the current draft."""
 
@@ -138,11 +138,11 @@ def add_scene(
 
 
 def update_scene(
-    label: str,
-    text: str | None = None,
-    prompt: str | None = None,
-    new_label: str | None = None,
-    tool_context: ToolContext | None = None,
+        label: str,
+        text: str | None = None,
+        prompt: str | None = None,
+        new_label: str | None = None,
+        tool_context: ToolContext | None = None,
 ) -> dict[str, Any]:
     """Update a scene's content and optionally rename its label."""
 
@@ -192,10 +192,10 @@ def check_prompt_consistency(tool_context: ToolContext) -> dict[str, object]:
 
 
 def expand_prompt(
-    label: str | None = None,
-    labels: list[str] | None = None,
-    full: bool = False,
-    tool_context: ToolContext | None = None,
+        label: str | None = None,
+        labels: list[str] | None = None,
+        full: bool = False,
+        tool_context: ToolContext | None = None,
 ) -> dict[str, object]:
     """Expand one or more scene prompts."""
 
@@ -211,10 +211,10 @@ def expand_prompt(
 
 
 def expand_scene(
-    label: str | None = None,
-    labels: list[str] | None = None,
-    expand: bool = False,
-    tool_context: ToolContext | None = None,
+        label: str | None = None,
+        labels: list[str] | None = None,
+        expand: bool = False,
+        tool_context: ToolContext | None = None,
 ) -> dict[str, object]:
     """Return one or more scene payloads."""
 
@@ -387,8 +387,8 @@ def _success(**payload: Any) -> dict[str, Any]:
 
 
 def _normalize_scene_selection(
-    label: str | None,
-    labels: list[str] | None,
+        label: str | None,
+        labels: list[str] | None,
 ) -> str | list[str] | None:
     """Normalize mutually exclusive scene-selection parameters.
 

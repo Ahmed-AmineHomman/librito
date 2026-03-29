@@ -150,10 +150,10 @@ def check_prompt_consistency(storybook: Storybook) -> dict[str, object]:
 
 
 def expand_prompt_for_scene(
-    storybook: Storybook,
-    scene: StoryScene,
-    *,
-    full: bool = False,
+        storybook: Storybook,
+        scene: StoryScene,
+        *,
+        full: bool = False,
 ) -> str:
     """Expand one scene prompt.
 

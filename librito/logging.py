@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 import sys
 from argparse import ArgumentParser
+
+import logging
 
 _LOG_LEVEL_NAMES = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 

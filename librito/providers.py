@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 import os
 
 from google.adk.models.lite_llm import LiteLlm
 
+import logging
 from librito.embedding_clients import EmbeddingClient
 from librito.embedding_clients.gemini import GeminiEmbeddingClient
 from librito.embedding_clients.lms import LMStudioEmbeddingClient
@@ -24,9 +24,9 @@ _LMS_API_KEY_ENV_VAR = "LMS_API_KEY"
 
 
 def build_segmentation_model(
-    *,
-    provider: str,
-    model: str,
+        *,
+        provider: str,
+        model: str,
 ) -> str | LiteLlm:
     """Build the model configuration used by the segmentation agent.
 
@@ -72,11 +72,11 @@ def build_segmentation_model(
 
 
 def build_image_client(
-    *,
-    provider: str,
-    model: str,
-    aspect_ratio: str = "1:1",
-    image_size: str = "1K",
+        *,
+        provider: str,
+        model: str,
+        aspect_ratio: str = "1:1",
+        image_size: str = "1K",
 ) -> ImageClient:
     """Build the image-generation client used by the illustration pipeline.
 
@@ -131,9 +131,9 @@ def build_image_client(
 
 
 def build_embedding_client(
-    *,
-    provider: str,
-    model: str,
+        *,
+        provider: str,
+        model: str,
 ) -> EmbeddingClient:
     """Build the embedding client used by evaluation and helper workflows.
 
