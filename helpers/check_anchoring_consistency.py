@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-import re
 import sys
 from argparse import ArgumentParser, Namespace
-from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Sequence
 
@@ -15,10 +13,10 @@ if __package__ in {None, ""}:
 
 from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook
-from librito.models import Storybook
+from librito.segmentation.validators import check_prompt_consistency
+from librito.segmentation.validators import count_concept_occurrences
 from librito.workspace import StoryWorkspace
 
-_ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
 logger = logging.getLogger(__name__)
 
 
@@ -68,33 +66,36 @@ def build_anchor_report(story: str) -> str:
     input_json = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", input_json)
     storybook = load_storybook(input_json)
-    defined_anchors = set(storybook.recurring_concepts)
-    occurrence_counts: Counter[str] = Counter()
-    scene_counts: Counter[str] = Counter()
-    scene_labels_by_anchor: dict[str, list[str]] = defaultdict(list)
-    undefined_anchors: dict[str, list[str]] = defaultdict(list)
-    undefined_seen: dict[str, set[str]] = defaultdict(set)
-
-    for scene in storybook.scenes:
-        anchors_in_scene = _ANCHOR_PATTERN.findall(scene.prompt)
-        occurrence_counts.update(anchors_in_scene)
-
-        seen_in_scene: set[str] = set()
-        for anchor in anchors_in_scene:
-            if anchor not in defined_anchors:
-                if scene.label not in undefined_seen[anchor]:
-                    undefined_seen[anchor].add(scene.label)
-                    undefined_anchors[anchor].append(scene.label)
-                continue
-            if anchor in seen_in_scene:
-                continue
-            seen_in_scene.add(anchor)
-            scene_counts[anchor] += 1
-            scene_labels_by_anchor[anchor].append(scene.label)
-
-    unused_anchors = sorted(anchor for anchor in defined_anchors if occurrence_counts[anchor] == 0)
-    single_scene_anchors = sorted(anchor for anchor in defined_anchors if scene_counts[anchor] == 1)
-    undefined_anchor_names = sorted(undefined_anchors)
+    defined_anchors = sorted(storybook.recurring_concepts)
+    report = check_prompt_consistency(storybook)
+    occurrences = count_concept_occurrences(storybook)
+    undefined_anchor_names = sorted(
+        {
+            item["anchor"]
+            for item in report["undefined_anchors"]
+        }
+    )
+    undefined_anchors = {
+        anchor: sorted(
+            {
+                entry["scene_label"]
+                for entry in report["undefined_anchors"]
+                if entry["anchor"] == anchor
+            }
+        )
+        for anchor in undefined_anchor_names
+    }
+    unused_anchors = list(report["unused_concepts"])
+    single_scene_anchors = sorted(
+        {
+            item["anchor"]
+            for item in report["single_scene_anchors"]
+        }
+    )
+    scene_labels_by_anchor = {
+        anchor: list(entry["scene_labels"])
+        for anchor, entry in occurrences.items()
+    }
     is_consistent = not undefined_anchor_names and not unused_anchors and not single_scene_anchors
     logger.info(
         "Anchoring analysis complete for story '%s': undefined=%d, unused=%d, single_scene=%d.",
@@ -144,7 +145,7 @@ def build_anchor_report(story: str) -> str:
         "| --- | ---: | --- | --- |",
     ]
 
-    for anchor in sorted(defined_anchors):
+    for anchor in defined_anchors:
         usage_status = "ok"
         if anchor in unused_anchors:
             usage_status = "unused"
@@ -154,7 +155,7 @@ def build_anchor_report(story: str) -> str:
         lines.append(
             "| {anchor} | {occurrences} | {scenes} | {status} |".format(
                 anchor=anchor,
-                occurrences=occurrence_counts[anchor],
+                occurrences=occurrences[anchor]["occurrence_count"],
                 scenes=", ".join(scene_labels_by_anchor.get(anchor, [])) or "-",
                 status=usage_status,
             )

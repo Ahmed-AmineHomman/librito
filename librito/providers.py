@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
-from google.adk.models.lite_llm import LiteLlm
-
 import logging
 from librito.embedding_clients import EmbeddingClient
 from librito.embedding_clients.gemini import GeminiEmbeddingClient
@@ -17,58 +13,6 @@ from librito.image_clients.gemini import GeminiImageClient
 from librito.image_clients.mock import MockImageClient, MockImageClientConfig
 
 logger = logging.getLogger(__name__)
-
-_GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
-_LMS_API_URL_ENV_VAR = "LMS_API_URL"
-_LMS_API_KEY_ENV_VAR = "LMS_API_KEY"
-
-
-def build_segmentation_model(
-        *,
-        provider: str,
-        model: str,
-) -> str | LiteLlm:
-    """Build the model configuration used by the segmentation agent.
-
-    Parameters
-    ----------
-    provider:
-        Text-generation provider name.
-    model:
-        Model identifier understood by the selected provider.
-
-    Returns
-    -------
-    str | LiteLlm
-        Model configuration accepted by ``google.adk.agents.LlmAgent``.
-
-    Raises
-    ------
-    RuntimeError
-        If the selected provider is missing required configuration.
-    ValueError
-        If the provider is unknown.
-    """
-
-    if provider == "gemini":
-        if not os.getenv(_GEMINI_API_KEY_ENV_VAR):
-            raise RuntimeError(f"Missing required environment variable: {_GEMINI_API_KEY_ENV_VAR}.")
-        logger.info("Using Gemini text provider.")
-        return model
-
-    if provider == "lms":
-        api_base = os.getenv(_LMS_API_URL_ENV_VAR)
-        if not api_base:
-            raise RuntimeError(f"Missing required environment variable: {_LMS_API_URL_ENV_VAR}.")
-
-        logger.info("Using LM Studio text provider.")
-        return LiteLlm(
-            model=model,
-            api_base=normalize_openai_compatible_api_base(api_base),
-            api_key=os.getenv(_LMS_API_KEY_ENV_VAR, "not-used"),
-        )
-
-    raise ValueError(f"Unsupported text provider: {provider}.")
 
 
 def build_image_client(
@@ -168,23 +112,3 @@ def build_embedding_client(
         return MockEmbeddingClient(model=model)
 
     raise ValueError(f"Unsupported embedding provider: {provider}.")
-
-
-def normalize_openai_compatible_api_base(api_base: str) -> str:
-    """Normalize an OpenAI-compatible API base URL.
-
-    Parameters
-    ----------
-    api_base:
-        User-provided API base URL.
-
-    Returns
-    -------
-    str
-        API base URL ending with ``/v1``.
-    """
-
-    normalized_api_base = api_base.rstrip("/")
-    if normalized_api_base.endswith("/v1"):
-        return normalized_api_base
-    return f"{normalized_api_base}/v1"

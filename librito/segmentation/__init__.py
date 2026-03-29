@@ -1,1 +1,1 @@
-"""Segmentation editing helpers and validators."""
+"""Segmentation validators and prompt-expansion helpers."""

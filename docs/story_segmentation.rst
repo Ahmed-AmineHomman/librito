@@ -10,7 +10,7 @@ ready for illustration generation. The result captures:
 * recurring visual concepts defined as anchors,
 * an ordered list of scenes containing story text and illustration prompts.
 
-This page describes both the **segmentation standard** and the **agentic
+This page describes both the **segmentation standard** and the **agent-native
 workflow** used to produce it.
 
 Expected JSON Format
@@ -60,10 +60,9 @@ Field Reference
    a stable visual description. During generation, tags in scene prompts are
    replaced by their description.
 
-   In the agent tool interface, recurring concepts are created and renamed from
-   plain names such as ``leo`` or ``living room``. The implementation
-   normalizes them internally to canonical keys such as ``<LEO>`` and
-   ``<LIVING_ROOM>``.
+   In interactive editing workflows, recurring concepts may be authored from
+   plain names such as ``leo`` or ``living room`` and normalized to canonical
+   keys such as ``<LEO>`` and ``<LIVING_ROOM>``.
 
 ``scenes[].label``
    Stable identifier for the scene. Labels must be unique and non-empty. They
@@ -140,7 +139,7 @@ concepts, and ordered scenes.
 Segmentation Instructions
 -------------------------
 
-The segmentation agent should follow a narrow workflow:
+The segmentation workflow should follow a narrow workflow:
 
 1. Read the full story.
 2. Inspect the current segmentation draft.
@@ -209,31 +208,27 @@ Finalization
 Implementation
 --------------
 
-The current implementation uses a filesystem-backed draft and a single ADK
-agent run:
+The current implementation is repository-native rather than script-driven:
 
-* ``segment_story.py`` starts the segmentation agent,
-* the raw story is stored separately from the segmentation draft,
-* the draft is autosaved after every mutation tool call,
-* the final ``story.json`` is written only by the export tool,
-* the agent tools are thin wrappers over a Python editor service.
+* ``story.md`` stores the raw source story,
+* ``story.json`` stores the canonical segmentation artifact,
+* Codex performs the semantic segmentation work directly in the workspace,
+* helper scripts provide deterministic validation and downstream processing.
 
 More concretely:
 
 * ``story.md`` stores the source story text,
-* ``story.segmentation.draft.json`` stores the mutable segmentation draft,
 * ``story.json`` stores the exported validated segmentation.
 
 The current runtime uses:
 
-* Google ADK as the agent framework,
-* plain function tools registered with the agent,
-* LiteLLM for LM Studio's local API,
-* Gemini models for larger runs when the ``gemini`` provider is selected.
+* Codex skills for the segmentation workflow,
+* repository helper scripts for deterministic checks,
+* Gemini and other configured providers for downstream generation or evaluation.
 
 Runtime configuration comes from environment variables:
 
-* ``GEMINI_API_KEY`` for Gemini-backed segmentation,
+* ``GEMINI_API_KEY`` for Gemini-backed helpers,
 * ``LMS_API_URL`` for LM Studio's OpenAI-compatible endpoint,
 * ``LMS_API_KEY`` when the local endpoint expects authentication.
 

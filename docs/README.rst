@@ -16,10 +16,10 @@ storybooks. The full pipeline is divided into three stages:
 Current State
 =============
 
-**Story segmentation** (stage 1) is implemented as an agentic workflow. The
-``segment_story.py`` script runs an LLM agent equipped with segmentation tools
-that edit a filesystem-backed draft and export a validated ``story.json``.
-The segmentation format and agent workflow are documented in
+**Story segmentation** (stage 1) is an agent-native workflow carried out
+directly in the repository by Codex using skills and helper scripts. The
+canonical output is a validated ``story.json`` stored in the story workspace.
+The segmentation format and workflow are documented in
 :doc:`story_segmentation`.
 
 **Illustration generation** (stage 2) is implemented as runnable code and
@@ -44,10 +44,10 @@ Clone the repository and install the required dependencies:
 Environment
 ===========
 
-Both entrypoints read provider configuration from environment variables.
+Runtime components read provider configuration from environment variables.
 
 * Gemini uses ``GEMINI_API_KEY``.
-* LM Studio segmentation uses ``LMS_API_URL`` and optionally ``LMS_API_KEY``.
+* LM Studio embedding helpers use ``LMS_API_URL`` and optionally ``LMS_API_KEY``.
 * ComfyUI illustration runs use ``COMFYUI_API_URL`` and optionally
   ``COMFYUI_API_KEY``.
 
@@ -56,13 +56,15 @@ See :doc:`story_segmentation` and :doc:`illustration_generation` for details.
 Quick Start
 ===========
 
-To create or resume a segmented story with the segmentation agent:
+To segment a story, place the source text at ``database/<story>/story.md`` and
+run the segmentation workflow with Codex inside this repository. The resulting
+canonical artifact is ``database/<story>/story.json``.
+
+To validate anchor usage in an existing segmented story:
 
 .. code-block:: bash
 
-    python segment_story.py --story leo --story-file docs/examples/leo/story.md --provider gemini --model gemini-2.0-flash
-
-To resume an existing draft, omit ``--story-file``.
+    python helpers/check_anchoring_consistency.py --story leo
 
 Once dependencies are installed and the appropriate API key is set, generate
 illustrations for a segmented story:

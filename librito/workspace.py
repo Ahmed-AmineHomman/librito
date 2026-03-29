@@ -8,7 +8,6 @@ from pathlib import Path
 DATABASE_ROOT = Path(__file__).resolve().parent.parent / "database"
 STORY_FILE_NAME = "story.md"
 STORYBOOK_FILE_NAME = "story.json"
-DRAFT_FILE_NAME = "story.segmentation.draft.json"
 UNITS_FILE_NAME = "units.json"
 ILLUSTRATIONS_DIRECTORY_NAME = "illustrations"
 
@@ -27,8 +26,6 @@ class StoryWorkspace:
         Canonical source story file path.
     storybook_file:
         Canonical storybook export path.
-    draft_file:
-        Canonical segmentation draft path.
     units_file:
         Canonical normalized-story path.
     illustrations_dir:
@@ -39,7 +36,6 @@ class StoryWorkspace:
     directory: Path
     story_file: Path
     storybook_file: Path
-    draft_file: Path
     units_file: Path
     illustrations_dir: Path
 
@@ -71,7 +67,6 @@ class StoryWorkspace:
             directory=directory,
             story_file=directory / STORY_FILE_NAME,
             storybook_file=directory / STORYBOOK_FILE_NAME,
-            draft_file=directory / DRAFT_FILE_NAME,
             units_file=directory / UNITS_FILE_NAME,
             illustrations_dir=directory / ILLUSTRATIONS_DIRECTORY_NAME,
         )
