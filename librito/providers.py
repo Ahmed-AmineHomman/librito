@@ -10,6 +10,7 @@ from google.adk.models.lite_llm import LiteLlm
 from librito.embedding_clients import EmbeddingClient
 from librito.embedding_clients.gemini import GeminiEmbeddingClient
 from librito.embedding_clients.lms import LMStudioEmbeddingClient
+from librito.embedding_clients.mock import MockEmbeddingClient
 from librito.image_clients import ImageClient
 from librito.image_clients.comfyui import ComfyUIImageClient
 from librito.image_clients.gemini import GeminiImageClient
@@ -72,7 +73,6 @@ def build_segmentation_model(
 
 def build_image_client(
     *,
-    mock: bool = False,
     provider: str = "gemini",
     checkpoint: str | None = None,
     diffusion_model: str | None = None,
@@ -85,8 +85,6 @@ def build_image_client(
 
     Parameters
     ----------
-    mock:
-        When ``True``, return a mock client instead of a real backend client.
     provider:
         Image-generation provider name.
     checkpoint:
@@ -116,7 +114,7 @@ def build_image_client(
         If the provider is unknown.
     """
 
-    if mock:
+    if provider == "mock":
         logger.info("Using mock image client.")
         return MockImageClient(MockImageClientConfig(
             aspect_ratio=aspect_ratio,
@@ -185,6 +183,10 @@ def build_embedding_client(
     if provider == "lms":
         logger.info("Using LM Studio embedding provider.")
         return LMStudioEmbeddingClient(model=model)
+
+    if provider == "mock":
+        logger.info("Using mock embedding provider.")
+        return MockEmbeddingClient(model=model)
 
     raise ValueError(f"Unsupported embedding provider: {provider}.")
 

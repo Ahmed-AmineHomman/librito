@@ -166,6 +166,10 @@ default models, and the environment variables used by each.
      - User-selected checkpoint or diffusion assets
      - ``COMFYUI_API_URL`` and optional ``COMFYUI_API_KEY``
      - 1:1 aspect ratio, 1K image size
+   * - Mock
+     - Built-in deterministic mock client
+     - None
+     - 1:1 aspect ratio, 1K image size
 
 Set the appropriate variables before running:
 
@@ -193,5 +197,5 @@ The current implementation does not provide:
 * a single-scene generation flag,
 * command-line overrides for model, aspect ratio, or image size.
 
-For debugging purposes, the ``--mock-image-generation`` flag can be passed to
-the generation script to produce pixel-noise images without calling a real API.
+For debugging purposes, the generation script can be run with
+``--provider mock`` to produce pixel-noise images without calling a real API.

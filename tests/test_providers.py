@@ -6,9 +6,11 @@ import os
 import unittest
 from unittest.mock import patch
 
+from librito.embedding_clients.mock import MockEmbeddingClient
 from librito.image_clients.gemini import GeminiImageClientError
 from librito.image_clients.mock import MockImageClient
 from librito.providers import (
+    build_embedding_client,
     build_image_client,
     build_segmentation_model,
     normalize_openai_compatible_api_base,
@@ -84,9 +86,9 @@ class ImageProviderTests(unittest.TestCase):
     """Validate image provider selection."""
 
     def test_build_image_client_returns_mock_client(self) -> None:
-        """Mock mode should bypass real provider setup."""
+        """Mock provider should bypass real provider setup."""
 
-        client = build_image_client(mock=True)
+        client = build_image_client(provider="mock")
 
         self.assertIsInstance(client, MockImageClient)
 
@@ -124,6 +126,17 @@ class ImageProviderTests(unittest.TestCase):
 
         self.assertIs(client, sentinel_client)
         comfyui_client_class.assert_called_once()
+
+
+class EmbeddingProviderTests(unittest.TestCase):
+    """Validate embedding provider selection."""
+
+    def test_build_embedding_client_returns_mock_client(self) -> None:
+        """Mock provider should build the deterministic embedding client."""
+
+        client = build_embedding_client(provider="mock", model="mock-embedding")
+
+        self.assertIsInstance(client, MockEmbeddingClient)
 
 
 class ProviderUtilityTests(unittest.TestCase):

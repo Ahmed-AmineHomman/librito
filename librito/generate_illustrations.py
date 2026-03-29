@@ -20,7 +20,6 @@ def generate_story_illustrations(
     story_directory: Path,
     client: ImageClient | None = None,
     *,
-    mock: bool = False,
     provider: str = "gemini",
     checkpoint: str | None = None,
     diffusion_model: str | None = None,
@@ -37,11 +36,8 @@ def generate_story_illustrations(
         Path to the story folder containing ``story.json``.
     client:
         Optional preconfigured image client used mainly for tests.
-    mock:
-        When ``True`` and no *client* is provided, use the mock image client
-        instead of the real API.
     provider:
-        Image generation provider (``"gemini"`` or ``"comfyui"``).
+        Image generation provider (``"gemini"``, ``"comfyui"``, or ``"mock"``).
     checkpoint:
         Checkpoint filename for the ComfyUI checkpoint workflow.
     diffusion_model:
@@ -64,7 +60,6 @@ def generate_story_illustrations(
 
     if client is None:
         client = build_image_client(
-            mock=mock,
             provider=provider,
             checkpoint=checkpoint,
             diffusion_model=diffusion_model,

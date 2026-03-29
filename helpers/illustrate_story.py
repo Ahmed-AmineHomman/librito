@@ -39,7 +39,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--provider",
-        choices=["gemini", "comfyui"],
+        choices=["gemini", "comfyui", "mock"],
         default="gemini",
         help="Image generation provider (default: gemini).",
     )
@@ -76,12 +76,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="1K",
         help='Overall image resolution: "0.5K", "1K", or "2K" (default: 1K).',
     )
-    parser.add_argument(
-        "--mock-image-generation",
-        action="store_true",
-        default=False,
-        help="Use a mock image client (pixel noise) instead of the real API.",
-    )
     arguments = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -95,7 +89,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.info("Starting illustration pipeline for %s.", arguments.storybook)
     generate_story_illustrations(
         arguments.storybook,
-        mock=arguments.mock_image_generation,
         provider=arguments.provider,
         checkpoint=arguments.checkpoint,
         diffusion_model=arguments.diffusion_model,
