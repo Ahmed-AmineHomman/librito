@@ -57,8 +57,8 @@ In practice:
 
 - `./.agents/`: skills and agent-oriented guidance
 - `./database/`: working area for stories and generated artifacts
-- `./librito/`: reusable source code
-- `./docs/`: documentation
+- `./librito/`: reusable source code, schema definitions, workspace structure, etc..
+- `./docs/`: user-facing documentation
 - `./helpers/`: deterministic helper scripts
 - `./tests/`: automated tests (NOT CURRENTLY USED)
 
