@@ -76,6 +76,8 @@ In practice:
 ## API Rules
 
 - API-related configuration must be read from environment variables only.
+- `./.env` should contain the environment variables needed by local helpers, and helper scripts load it automatically at startup.
+- Never inspect `./.env` directly. If something goes wrong with environment variables, ask the user to provide or correct the necessary information.
 - Do not hardcode API keys, tokens, or endpoints.
 - Use mocks in tests and development whenever possible.
 - Avoid real paid or network-dependent API calls in tests unless explicitly requested.

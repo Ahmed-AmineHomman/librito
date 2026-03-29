@@ -14,6 +14,7 @@ import logging
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from librito.environment import load_repository_environment
 from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook
 from librito.models import Storybook
@@ -261,6 +262,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         Process exit status.
     """
 
+    load_repository_environment()
     arguments = load_parameters(argv)
     configure_logging(arguments.log_level)
     logger.info("Starting anchoring consistency check for story '%s'.", arguments.story)
