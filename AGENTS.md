@@ -60,7 +60,7 @@ In practice:
 - `./librito/`: reusable source code
 - `./docs/`: documentation
 - `./helpers/`: deterministic helper scripts
-- `./tests/`: automated tests
+- `./tests/`: automated tests (NOT CURRENTLY USED)
 
 ## Core Constraints
 
@@ -71,6 +71,7 @@ In practice:
 - All functions, methods, classes, and modules must be documented.
 - Use numpydoc-style docstrings.
 - Type hints are required for function and method parameters and return values.
+- Refrain from creating tests: scope and maturity of the solution do not justify testing yet.
 
 ## API Rules
 
