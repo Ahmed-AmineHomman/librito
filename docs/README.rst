@@ -10,7 +10,7 @@ storybooks. The full pipeline is divided into three stages:
    constants.
 2. **Illustration generation** — producing one illustration per scene from the
    segmented story using an image generation model.
-3. **Assembly** — constructing the final illustrated storybook from scene texts
+3. **Assembly** — constructing the final illustrated book from scene texts
    and generated illustrations.
 
 Current State
@@ -93,7 +93,7 @@ Documentation
 
 * :doc:`story_segmentation` — the segmented story format and how to produce it.
 * :doc:`illustration_generation` — how illustration generation works.
-* :doc:`assembly_storybook` — how fixed-layout EPUB assembly works.
+* :doc:`assembly_book` — how fixed-layout EPUB assembly works.
 * :doc:`complete_example` — the full Leo example from story to illustrations.
 
 Read them in that order.

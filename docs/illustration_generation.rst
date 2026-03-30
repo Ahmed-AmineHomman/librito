@@ -159,7 +159,7 @@ model argument meaning, and the environment variables used by each.
    * - Provider
      - ``--model`` meaning
      - Env Variables
-      - Default Settings
+     - Default Settings
    * - Google Gemini
      - Gemini image model identifier
      - ``GEMINI_API_KEY``

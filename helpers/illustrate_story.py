@@ -52,7 +52,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             """
             Behavior:
               - reads ``database/<story>/story.json``
-              - builds one final prompt per generated scene
+              - builds one render prompt per generated scene
               - writes images to ``database/<story>/illustrations/``
               - updates each generated scene's ``image_path`` in place
 
@@ -175,7 +175,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             scene.label,
         )
 
-        # Build the final prompt just before generation so the script stays
+        # Build the render prompt just before generation so the script stays
         # easy to read from top to bottom.
         prompt = build_render_prompt(storybook, scene)
         generated_image = client.generate_image(prompt)

@@ -1,4 +1,4 @@
-"""Assemble a fixed-layout EPUB storybook from scene texts and illustrations."""
+"""Assemble a fixed-layout EPUB book from scene texts and illustrations."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description=dedent(
             """
-            Assemble a fixed-layout EPUB storybook from a segmented story.
+            Assemble a fixed-layout EPUB book from a storybook.
 
             The command validates that every scene has reader-facing text and an
             existing illustration, then renders a minimalist two-page spread per
@@ -79,8 +79,8 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
               - right page: full-page illustration
 
             Examples:
-              python helpers/assemble_storybook.py --story sir_turnip
-              python helpers/assemble_storybook.py --story sir_turnip --background-color "#f4efe6"
+              python helpers/assemble_book.py --story sir_turnip
+              python helpers/assemble_book.py --story sir_turnip --background-color "#f4efe6"
             """
         ).strip(),
         formatter_class=RawDescriptionHelpFormatter,
@@ -106,7 +106,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the storybook assembly entrypoint.
+    """Run the book assembly entrypoint.
 
     Parameters
     ----------
@@ -135,7 +135,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     output_path = workspace.book_file
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    staging_root = workspace.directory / "_storybook_assembly_tmp"
+    staging_root = workspace.directory / "_book_assembly_tmp"
     if staging_root.exists():
         if staging_root.parent != workspace.directory:
             raise SystemExit(f"Refusing to clear unexpected staging directory: {staging_root}")

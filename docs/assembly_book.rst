@@ -1,8 +1,8 @@
-Assembly Storybook
-==================
+Assembly Book
+=============
 
 The assembly stage takes a segmented story with generated illustrations and
-packages it as a fixed-layout EPUB storybook.
+packages it as a fixed-layout EPUB book.
 
 How to Run
 ----------
@@ -11,13 +11,13 @@ From the repository root:
 
 .. code-block:: bash
 
-   python helpers/assemble_storybook.py --story sir_turnip
+   python helpers/assemble_book.py --story sir_turnip
 
 On Windows PowerShell with the project virtual environment:
 
 .. code-block:: powershell
 
-   .\.venv\Scripts\python.exe helpers/assemble_storybook.py --story sir_turnip
+   .\.venv\Scripts\python.exe helpers/assemble_book.py --story sir_turnip
 
 What the Command Does
 ---------------------
@@ -56,6 +56,6 @@ The text-page and cover background color can be changed from the command line:
 
 .. code-block:: bash
 
-   python helpers/assemble_storybook.py --story sir_turnip --background-color "#f4efe6"
+   python helpers/assemble_book.py --story sir_turnip --background-color "#f4efe6"
 
 The default text color can also be overridden with ``--text-color``.

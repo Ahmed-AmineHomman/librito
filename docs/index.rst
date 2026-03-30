@@ -6,5 +6,5 @@
 
     Story Segmentation <story_segmentation>
     Illustration Generation <illustration_generation>
-    Assembly Storybook <assembly_storybook>
+    Assembly Book <assembly_book>
     Complete Example <complete_example>
