@@ -30,8 +30,8 @@ Segmented Story
 ---------------
 
 After segmentation (see :doc:`story_segmentation`), the story becomes a
-structured JSON file. The segmentation defines a visual style, three concept
-tags, and three scenes:
+structured JSON file. The storybook defines canonical book metadata, the book
+parts block, three concept tags, and three scenes:
 
 .. literalinclude:: examples/leo/story.json
    :language: json

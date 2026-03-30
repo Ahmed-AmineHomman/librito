@@ -1,9 +1,10 @@
 Illustration Generation
 =======================
 
-The illustration generation stage takes a segmented story (see
-:doc:`story_segmentation`) and produces one illustration per scene by sending
-constructed prompts to an image generation model.
+The illustration generation stage takes a storybook (see
+:doc:`story_segmentation`) and produces illustrations for scenes and any
+configured illustrated book parts by sending constructed prompts to an image
+generation model.
 
 This document explains how the generation process works and uses the Leo sample
 story (``docs/examples/leo/story.json``) as a running example.
@@ -30,23 +31,34 @@ What the Command Does
 
 1. Loads and validates the segmented ``story.json``.
 2. Creates the ``illustrations/`` subdirectory next to the JSON file if needed.
-3. Iterates over scenes in array order.
-4. For each scene without an existing illustration:
+3. Iterates over scenes and any selected illustrated book parts.
+4. For each selected item without an existing illustration:
 
    a. Builds the render prompt (see `Prompt Construction`_ below).
    b. Sends the prompt to the configured image generation model.
-   c. Saves the returned image as ``scene-001.png``, ``scene-002.png``, etc.,
-      based on the current scene order.
-   d. Updates the scene's ``image_path`` in the JSON file immediately.
+   c. Saves the returned image under ``illustrations/`` using the canonical file
+      names for the selected slot.
+   d. Updates the corresponding ``image_path`` in the JSON file immediately.
 
 Resume Behavior
 ---------------
 
-If a scene already has a non-empty ``image_path`` and the referenced file exists
-on disk, that scene is skipped. This makes interrupted runs resumable without
-regenerating every image.
+If a selected scene or book part already has a non-empty ``image_path`` and the
+referenced file exists on disk, that item is skipped. This makes interrupted
+runs resumable without regenerating every image.
 
-Use ``--force`` to ignore existing images and regenerate every scene in order.
+Use ``--force`` to ignore existing images and regenerate every selected item.
+
+Selection
+---------
+
+The helper supports three selection modes:
+
+* omit both ``--scenes`` and ``--parts`` to process all scenes and all
+  illustrated book parts,
+* pass ``--scenes`` to restrict work to specific scene labels,
+* pass ``--parts`` to restrict work to specific illustrated book-part names such
+  as ``front_cover`` or ``back_cover``.
 
 Prompt Construction
 -------------------
@@ -54,8 +66,9 @@ Prompt Construction
 The generation process builds the render prompt in three layers:
 
 1. **Style** — the global style from ``style``.
-2. **Resolved prompt** — the scene's ``prompt`` field after anchor resolution
-   (concept tags are replaced by their bracketed descriptions).
+2. **Resolved prompt** — the selected scene or book-part illustration prompt
+   after anchor resolution (concept tags are replaced by their bracketed
+   descriptions).
 3. **Constraints** — when the storybook's ``constraints`` field is non-empty, its
    value is used. Otherwise the default constraints from the packaged resource
    file ``librito/resources/prompt_constraints.txt`` are applied.
@@ -122,18 +135,20 @@ generation rules.
 Output Layout
 -------------
 
-For a story identified as ``leo``, a successful run produces:
+For a story identified as ``leo``, a successful run can produce:
 
 .. code-block:: text
 
    database/leo/
    ├── illustrations/
+   │   ├── front-cover.png
    │   ├── scene-001.png
    │   ├── scene-002.png
    │   └── ...
    └── story.json
 
-After generation, each scene's ``image_path`` contains a relative path:
+After generation, each item's ``image_path`` contains a relative path. For a
+scene:
 
 .. code-block:: json
 
@@ -142,6 +157,19 @@ After generation, each scene's ``image_path`` contains a relative path:
      "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge...",
      "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>...",
      "image_path": "illustrations/scene-001.png"
+   }
+
+For a book part:
+
+.. code-block:: json
+
+   {
+     "text": [],
+     "illustration": {
+       "prompt": "<LEO> smiles while holding his <TOY_CAR> in the warm light of the <LIVING_ROOM>.",
+       "image_path": "illustrations/front-cover.png",
+       "text_mode": "overlay"
+     }
    }
 
 .. _supported-providers:

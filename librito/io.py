@@ -6,17 +6,30 @@ import json
 from pathlib import Path
 from typing import Any
 
-from librito.models import StoryScene, Storybook, Unit, Units
+from librito.models import BookParts, IllustrationSpec, PageSpec, StoryScene, Storybook, Unit, Units
 
-_STORYBOOK_TOP_LEVEL_KEYS = {"title", "style", "constraints", "concepts", "scenes"}
+_STORYBOOK_TOP_LEVEL_KEYS = {"title", "author", "style", "constraints", "concepts", "parts", "scenes"}
+_STORYBOOK_PART_KEYS = {
+    "front_cover",
+    "front_endpaper",
+    "opening_page",
+    "frontispiece",
+    "title_page",
+    "closing_facing_page",
+    "closing_illustration",
+    "back_cover",
+}
 _STORYBOOK_SCENE_KEYS = {"label", "text", "prompt", "image_path"}
+_PAGE_KEYS = {"text", "illustration"}
+_ILLUSTRATION_KEYS = {"prompt", "image_path", "text_mode"}
 _UNITS_TOP_LEVEL_KEYS = {"units"}
 _UNIT_KEYS = {"label", "type", "text"}
 _ALLOWED_UNIT_TYPES = {"narration", "dialogue_turn"}
+_ALLOWED_TEXT_MODES = {"overlay", "embedded"}
 
 
 def load_storybook(path: Path) -> Storybook:
-    """Load and validate a segmented storybook JSON file.
+    """Load and validate a storybook JSON file.
 
     Parameters
     ----------
@@ -70,9 +83,11 @@ def load_storybook(path: Path) -> Storybook:
 
     return Storybook(
         title=_require_string(payload["title"], "story.title"),
+        author=_require_string(payload["author"], "story.author"),
         style=_require_string(payload["style"], "story.style"),
         constraints=_require_string(payload["constraints"], "story.constraints"),
         concepts=parsed_concepts,
+        parts=_parse_book_parts(payload["parts"]),
         scenes=scenes,
     )
 
@@ -91,9 +106,11 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
     _write_json(
         {
             "title": storybook.title,
+            "author": storybook.author,
             "style": storybook.style,
             "constraints": storybook.constraints,
             "concepts": storybook.concepts,
+            "parts": _serialize_book_parts(storybook.parts),
             "scenes": [
                 {
                     "label": scene.label,
@@ -186,6 +203,135 @@ def save_units(units: Units, path: Path) -> None:
         },
         path,
     )
+
+
+def _parse_book_parts(payload: Any) -> BookParts:
+    """Parse the ``parts`` section of a storybook."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("story.parts must be an object.")
+    _require_exact_keys(payload, _STORYBOOK_PART_KEYS, "story.parts")
+
+    return BookParts(
+        front_cover=_parse_required_page(payload["front_cover"], "story.parts.front_cover"),
+        front_endpaper=_parse_optional_page(payload["front_endpaper"], "story.parts.front_endpaper"),
+        opening_page=_parse_optional_page(payload["opening_page"], "story.parts.opening_page"),
+        frontispiece=_parse_optional_page(payload["frontispiece"], "story.parts.frontispiece"),
+        title_page=_parse_required_page(payload["title_page"], "story.parts.title_page"),
+        closing_facing_page=_parse_optional_page(
+            payload["closing_facing_page"],
+            "story.parts.closing_facing_page",
+        ),
+        closing_illustration=_parse_optional_page(
+            payload["closing_illustration"],
+            "story.parts.closing_illustration",
+        ),
+        back_cover=_parse_required_page(payload["back_cover"], "story.parts.back_cover"),
+    )
+
+
+def _parse_required_page(payload: Any, context: str) -> PageSpec:
+    """Parse a required page object."""
+
+    if not isinstance(payload, dict):
+        raise ValueError(f"{context} must be an object.")
+    return _parse_page(payload, context)
+
+
+def _parse_optional_page(payload: Any, context: str) -> PageSpec | None:
+    """Parse an optional page object."""
+
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise ValueError(f"{context} must be an object or null.")
+    return _parse_page(payload, context)
+
+
+def _parse_page(payload: dict[str, Any], context: str) -> PageSpec:
+    """Parse a page object."""
+
+    _require_exact_keys(payload, _PAGE_KEYS, context)
+
+    text_payload = payload["text"]
+    if not isinstance(text_payload, list):
+        raise ValueError(f"{context}.text must be an array.")
+    text = [_require_string(item, f"{context}.text[{index}]") for index, item in enumerate(text_payload)]
+
+    return PageSpec(
+        text=text,
+        illustration=_parse_optional_illustration(payload["illustration"], f"{context}.illustration"),
+    )
+
+
+def _parse_optional_illustration(payload: Any, context: str) -> IllustrationSpec | None:
+    """Parse an optional illustration object."""
+
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise ValueError(f"{context} must be an object or null.")
+    _require_exact_keys(payload, _ILLUSTRATION_KEYS, context)
+
+    text_mode_value = payload["text_mode"]
+    if text_mode_value is not None:
+        text_mode = _require_non_empty_trimmed_string(text_mode_value, f"{context}.text_mode")
+        if text_mode not in _ALLOWED_TEXT_MODES:
+            raise ValueError(
+                f"{context}.text_mode must be one of {sorted(_ALLOWED_TEXT_MODES)!r}, got {text_mode!r}."
+            )
+    else:
+        text_mode = None
+
+    return IllustrationSpec(
+        prompt=_require_string(payload["prompt"], f"{context}.prompt"),
+        image_path=_require_string(payload["image_path"], f"{context}.image_path"),
+        text_mode=text_mode,
+    )
+
+
+def _serialize_book_parts(parts: BookParts) -> dict[str, object]:
+    """Serialize the ``parts`` section of a storybook."""
+
+    return {
+        "front_cover": _serialize_page(parts.front_cover),
+        "front_endpaper": _serialize_optional_page(parts.front_endpaper),
+        "opening_page": _serialize_optional_page(parts.opening_page),
+        "frontispiece": _serialize_optional_page(parts.frontispiece),
+        "title_page": _serialize_page(parts.title_page),
+        "closing_facing_page": _serialize_optional_page(parts.closing_facing_page),
+        "closing_illustration": _serialize_optional_page(parts.closing_illustration),
+        "back_cover": _serialize_page(parts.back_cover),
+    }
+
+
+def _serialize_optional_page(page: PageSpec | None) -> dict[str, object] | None:
+    """Serialize an optional page object."""
+
+    if page is None:
+        return None
+    return _serialize_page(page)
+
+
+def _serialize_page(page: PageSpec) -> dict[str, object]:
+    """Serialize a page object."""
+
+    return {
+        "text": list(page.text),
+        "illustration": _serialize_optional_illustration(page.illustration),
+    }
+
+
+def _serialize_optional_illustration(illustration: IllustrationSpec | None) -> dict[str, object] | None:
+    """Serialize an optional illustration object."""
+
+    if illustration is None:
+        return None
+    return {
+        "prompt": illustration.prompt,
+        "image_path": illustration.image_path,
+        "text_mode": illustration.text_mode,
+    }
 
 
 def _load_json_object(path: Path) -> dict[str, Any]:

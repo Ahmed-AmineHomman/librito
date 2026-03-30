@@ -1,11 +1,37 @@
 {
     "title": "Léo et sa voiture rouge",
+    "author": "Librito Example",
     "style": "Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive characters",
     "constraints": "",
     "concepts": {
         "<LEO>": "A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.",
         "<TOY_CAR>": "A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.",
         "<LIVING_ROOM>": "A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight."
+    },
+    "parts": {
+        "front_cover": {
+            "text": [],
+            "illustration": {
+                "prompt": "<LEO> smiles while holding his <TOY_CAR> in the warm light of the <LIVING_ROOM>.",
+                "image_path": "",
+                "text_mode": "overlay"
+            }
+        },
+        "front_endpaper": null,
+        "opening_page": null,
+        "frontispiece": null,
+        "title_page": {
+            "text": [],
+            "illustration": null
+        },
+        "closing_facing_page": null,
+        "closing_illustration": null,
+        "back_cover": {
+            "text": [
+                "Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée."
+            ],
+            "illustration": null
+        }
     },
     "scenes": [
         {

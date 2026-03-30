@@ -1,4 +1,4 @@
-"""Assemble a fixed-layout EPUB book from scene texts and illustrations."""
+"""Assemble a fixed-layout EPUB book from storybook pages and illustrations."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import sys
 import shutil
 import zipfile
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from textwrap import dedent
@@ -23,7 +24,7 @@ if __package__ in {None, ""}:
 from librito.environment import load_repository_environment
 from librito.io import load_storybook
 from librito.logging import add_logging_arguments, configure_logging
-from librito.models import Storybook
+from librito.models import BookParts, PageSpec, Storybook
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
@@ -37,8 +38,38 @@ BODY_FONT_SIZE = 58
 BODY_LINE_SPACING = 22
 TITLE_FONT_SIZE = 126
 TITLE_LINE_SPACING = 28
+AUTHOR_FONT_SIZE = 68
+AUTHOR_LINE_SPACING = 18
 DEFAULT_BACKGROUND_COLOR = "#f6f1e8"
 DEFAULT_TEXT_COLOR = "#1d1a17"
+
+
+@dataclass(slots=True)
+class RenderedPage:
+    """One rendered page staged into the EPUB package.
+
+    Parameters
+    ----------
+    slug:
+        Stable slug used for filenames and manifest identifiers.
+    title:
+        Human-readable page title for EPUB metadata.
+    alt_text:
+        Alternative text describing the page image.
+    image:
+        Fully rendered page image.
+    spread:
+        Optional EPUB spread side, either ``"left"`` or ``"right"``.
+    nav_label:
+        Optional navigation label shown in the table of contents.
+    """
+
+    slug: str
+    title: str
+    alt_text: str
+    image: Image.Image
+    spread: str | None = None
+    nav_label: str | None = None
 
 
 def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
@@ -60,25 +91,26 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             """
             Assemble a fixed-layout EPUB book from a storybook.
 
-            The command validates that every scene has reader-facing text and an
-            existing illustration, then renders a minimalist two-page spread per
-            scene: left page for text, right page for the illustration.
+            The command validates the required book parts, scene material, and
+            referenced illustration files, then renders front matter, scene
+            spreads, optional closing pages, and the back cover.
             """
         ).strip(),
         epilog=dedent(
             """
             Behavior:
               - reads ``database/<story>/story.json``
-              - validates the title, scene texts, and generated illustrations
+              - validates the title, author, book-part assets, scene texts, and generated illustrations
               - matches the page geometry to the requested aspect ratio
-              - renders a text-only cover plus one text page and one image page per scene
+              - renders front matter, one text page and one image page per scene, optional closing pages, and the back cover
               - writes the final EPUB to ``database/<story>/story.epub``
 
             Layout:
-              - cover: text only
+              - front cover: full-page illustration with optional overlaid title and author
+              - front matter: paired spreads with blank filler pages when needed
               - each scene: exactly 2 pages
-              - left page: rendered text on a flat configurable background
-              - right page: full-page illustration
+              - closing matter: optional paired spread before the back cover
+              - back cover: teaser page with optional full-page illustration
 
             Examples:
               python helpers/assemble_book.py --story sir_turnip
@@ -103,12 +135,12 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser.add_argument(
         "--background-color",
         default=DEFAULT_BACKGROUND_COLOR,
-        help=f"Solid background color for the cover and text pages (default: {DEFAULT_BACKGROUND_COLOR}).",
+        help=f"Solid background color for text pages and blank pages (default: {DEFAULT_BACKGROUND_COLOR}).",
     )
     parser.add_argument(
         "--text-color",
         default=DEFAULT_TEXT_COLOR,
-        help=f"Text color for the cover and text pages (default: {DEFAULT_TEXT_COLOR}).",
+        help=f"Text color for rendered text overlays and text pages (default: {DEFAULT_TEXT_COLOR}).",
     )
     return parser.parse_args(argv)
 
@@ -165,86 +197,62 @@ def main(argv: Sequence[str] | None = None) -> int:
         pages_directory.mkdir(parents=True, exist_ok=True)
         meta_inf_directory.mkdir(parents=True, exist_ok=True)
 
-        logger.info("Rendering cover and scene pages.")
-        render_cover_page(storybook.title, background_color, text_color).save(
-            images_directory / "cover.png"
-        )
-        (pages_directory / "cover.xhtml").write_text(
-            build_page_document(
-                title=storybook.title,
-                image_href="../images/cover.png",
-                image_alt=f"Cover for {storybook.title}",
-            ),
-            encoding="utf-8",
+        logger.info("Rendering cover, front matter, scene spreads, and back matter.")
+        pages = build_rendered_pages(
+            storybook=storybook,
+            workspace=workspace,
+            background_color=background_color,
+            text_color=text_color,
         )
 
         manifest_items = [
             '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
             '<item id="stylesheet" href="styles.css" media-type="text/css"/>',
-            '<item id="cover-image" href="images/cover.png" media-type="image/png" properties="cover-image"/>',
-            '<item id="cover-page" href="pages/cover.xhtml" media-type="application/xhtml+xml"/>',
         ]
-        spine_items = ['<itemref idref="cover-page"/>']
-        nav_links = ['<li><a href="pages/cover.xhtml">Cover</a></li>']
+        spine_items: list[str] = []
+        nav_links: list[str] = []
 
-        for scene_number, scene in enumerate(storybook.scenes, start=1):
-            logger.info(
-                "Rendering spread for scene %d/%d (%s).",
-                scene_number,
-                len(storybook.scenes),
-                scene.label,
-            )
-            text_image_name = f"scene-{scene_number:03d}-text.png"
-            illustration_image_name = f"scene-{scene_number:03d}-illustration.png"
-            text_page_name = f"scene-{scene_number:03d}-text.xhtml"
-            illustration_page_name = f"scene-{scene_number:03d}-illustration.xhtml"
+        for page in pages:
+            image_name = f"{page.slug}.png"
+            page_name = f"{page.slug}.xhtml"
+            image_item_id = f"{page.slug}-image"
+            page_item_id = f"{page.slug}-page"
 
-            render_scene_text_page(
-                scene.label,
-                scene.text,
-                background_color,
-                text_color,
-            ).save(
-                images_directory / text_image_name
-            )
-            render_illustration_page(workspace.directory / scene.image_path).save(
-                images_directory / illustration_image_name
-            )
-
-            (pages_directory / text_page_name).write_text(
+            page.image.save(images_directory / image_name)
+            (pages_directory / page_name).write_text(
                 build_page_document(
-                    title=f"Scene {scene_number}",
-                    image_href=f"../images/{text_image_name}",
-                    image_alt=f"Scene {scene_number} text",
+                    title=page.title,
+                    image_href=f"../images/{image_name}",
+                    image_alt=page.alt_text,
                 ),
                 encoding="utf-8",
             )
-            (pages_directory / illustration_page_name).write_text(
-                build_page_document(
-                    title=f"Scene {scene_number} illustration",
-                    image_href=f"../images/{illustration_image_name}",
-                    image_alt=f"Scene {scene_number} illustration",
-                ),
-                encoding="utf-8",
+
+            image_item = (
+                f'<item id="{image_item_id}" href="images/{image_name}" media-type="image/png"/>'
             )
+            if page.slug == "front-cover":
+                image_item = (
+                    f'<item id="{image_item_id}" href="images/{image_name}" '
+                    'media-type="image/png" properties="cover-image"/>'
+                )
 
             manifest_items.extend(
                 [
-                    f'<item id="scene-{scene_number:03d}-text-image" href="images/{text_image_name}" media-type="image/png"/>',
-                    f'<item id="scene-{scene_number:03d}-illustration-image" href="images/{illustration_image_name}" media-type="image/png"/>',
-                    f'<item id="scene-{scene_number:03d}-text-page" href="pages/{text_page_name}" media-type="application/xhtml+xml"/>',
-                    f'<item id="scene-{scene_number:03d}-illustration-page" href="pages/{illustration_page_name}" media-type="application/xhtml+xml"/>',
+                    image_item,
+                    f'<item id="{page_item_id}" href="pages/{page_name}" media-type="application/xhtml+xml"/>',
                 ]
             )
-            spine_items.extend(
-                [
-                    f'<itemref idref="scene-{scene_number:03d}-text-page" properties="page-spread-left"/>',
-                    f'<itemref idref="scene-{scene_number:03d}-illustration-page" properties="page-spread-right"/>',
-                ]
-            )
-            nav_links.append(
-                f'<li><a href="pages/{text_page_name}">Scene {scene_number}</a></li>'
-            )
+
+            if page.spread == "left":
+                spine_items.append(f'<itemref idref="{page_item_id}" properties="page-spread-left"/>')
+            elif page.spread == "right":
+                spine_items.append(f'<itemref idref="{page_item_id}" properties="page-spread-right"/>')
+            else:
+                spine_items.append(f'<itemref idref="{page_item_id}"/>')
+
+            if page.nav_label:
+                nav_links.append(f'<li><a href="pages/{page_name}">{escape(page.nav_label)}</a></li>')
 
         (epub_root / "styles.css").write_text(build_stylesheet(), encoding="utf-8")
         (epub_root / "nav.xhtml").write_text(
@@ -309,6 +317,211 @@ def configure_page_size(aspect_ratio: str) -> None:
     PAGE_HEIGHT = round((BASE_PAGE_AREA / ratio) ** 0.5)
 
 
+def build_rendered_pages(
+    storybook: Storybook,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> list[RenderedPage]:
+    """Render every book page in display order."""
+
+    pages: list[RenderedPage] = [
+        RenderedPage(
+            slug="front-cover",
+            title="Front Cover",
+            alt_text=f"Front cover for {storybook.title}",
+            image=render_front_cover_page(
+                title=storybook.title,
+                author=storybook.author,
+                image_path=workspace.directory / storybook.parts.front_cover.illustration.image_path,
+                text_mode=storybook.parts.front_cover.illustration.text_mode,
+                text_color=text_color,
+            ),
+            nav_label="Front Cover",
+        )
+    ]
+
+    pages.extend(
+        build_opening_pair(
+            parts=storybook.parts,
+            workspace=workspace,
+            background_color=background_color,
+            text_color=text_color,
+        )
+    )
+    pages.extend(
+        build_title_pair(
+            storybook=storybook,
+            workspace=workspace,
+            background_color=background_color,
+            text_color=text_color,
+        )
+    )
+
+    for scene_number, scene in enumerate(storybook.scenes, start=1):
+        logger.info(
+            "Rendering spread for scene %d/%d (%s).",
+            scene_number,
+            len(storybook.scenes),
+            scene.label,
+        )
+        pages.extend(
+            [
+                RenderedPage(
+                    slug=f"scene-{scene_number:03d}-text",
+                    title=f"Scene {scene_number}",
+                    alt_text=f"Scene {scene_number} text",
+                    image=render_scene_text_page(
+                        scene.label,
+                        scene.text,
+                        background_color,
+                        text_color,
+                    ),
+                    spread="left",
+                    nav_label=f"Scene {scene_number}",
+                ),
+                RenderedPage(
+                    slug=f"scene-{scene_number:03d}-illustration",
+                    title=f"Scene {scene_number} Illustration",
+                    alt_text=f"Scene {scene_number} illustration",
+                    image=render_illustration_page(workspace.directory / scene.image_path),
+                    spread="right",
+                ),
+            ]
+        )
+
+    pages.extend(
+        build_closing_pair(
+            parts=storybook.parts,
+            workspace=workspace,
+            background_color=background_color,
+            text_color=text_color,
+        )
+    )
+    pages.append(
+        RenderedPage(
+            slug="back-cover",
+            title="Back Cover",
+            alt_text=f"Back cover for {storybook.title}",
+            image=render_back_cover_page(
+                back_cover=storybook.parts.back_cover,
+                workspace=workspace,
+                background_color=background_color,
+                text_color=text_color,
+            ),
+            nav_label="Back Cover",
+        )
+    )
+    return pages
+
+
+def build_opening_pair(
+    parts: BookParts,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> list[RenderedPage]:
+    """Render the front-endpaper and opening-page spread when needed."""
+
+    has_left = parts.front_endpaper is not None and parts.front_endpaper.illustration is not None
+    has_right = has_page_text_content(parts.opening_page)
+    if not has_left and not has_right:
+        return []
+
+    return [
+        RenderedPage(
+            slug="front-endpaper" if has_left else "front-endpaper-blank",
+            title="Front Endpaper" if has_left else "Blank",
+            alt_text="Front endpaper" if has_left else "Blank page",
+            image=render_illustrated_page(parts.front_endpaper, workspace, background_color),
+            spread="left",
+            nav_label="Front Endpaper" if has_left else None,
+        ),
+        RenderedPage(
+            slug="opening-page" if has_right else "opening-page-blank",
+            title="Opening Page" if has_right else "Blank",
+            alt_text="Dedication or epigraph page" if has_right else "Blank page",
+            image=render_text_page(parts.opening_page, background_color, text_color, "The opening-page text does not fit on its page."),
+            spread="right",
+            nav_label="Dedication / Epigraph" if has_right else None,
+        ),
+    ]
+
+
+def build_title_pair(
+    storybook: Storybook,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> list[RenderedPage]:
+    """Render the frontispiece and title-page spread."""
+
+    has_frontispiece = storybook.parts.frontispiece is not None and storybook.parts.frontispiece.illustration is not None
+    return [
+        RenderedPage(
+            slug="frontispiece" if has_frontispiece else "frontispiece-blank",
+            title="Frontispiece" if has_frontispiece else "Blank",
+            alt_text="Frontispiece illustration" if has_frontispiece else "Blank page",
+            image=render_illustrated_page(storybook.parts.frontispiece, workspace, background_color),
+            spread="left",
+            nav_label="Frontispiece" if has_frontispiece else None,
+        ),
+        RenderedPage(
+            slug="title-page",
+            title="Title Page",
+            alt_text=f"Title page for {storybook.title}",
+            image=render_title_page(
+                title=storybook.title,
+                author=storybook.author,
+                title_page=storybook.parts.title_page,
+                workspace=workspace,
+                background_color=background_color,
+                text_color=text_color,
+            ),
+            spread="right",
+            nav_label="Title Page",
+        ),
+    ]
+
+
+def build_closing_pair(
+    parts: BookParts,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> list[RenderedPage]:
+    """Render the optional closing spread."""
+
+    has_left = has_page_text_content(parts.closing_facing_page)
+    has_right = parts.closing_illustration is not None and parts.closing_illustration.illustration is not None
+    if not has_left and not has_right:
+        return []
+
+    return [
+        RenderedPage(
+            slug="closing-facing-page" if has_left else "closing-facing-page-blank",
+            title="Closing Facing Page" if has_left else "Blank",
+            alt_text="Closing facing page" if has_left else "Blank page",
+            image=render_text_page(
+                parts.closing_facing_page,
+                background_color,
+                text_color,
+                "The closing-facing-page text does not fit on its page.",
+            ),
+            spread="left",
+            nav_label="Closing Page" if has_left else None,
+        ),
+        RenderedPage(
+            slug="closing-illustration" if has_right else "closing-illustration-blank",
+            title="Closing Illustration" if has_right else "Blank",
+            alt_text="Closing illustration" if has_right else "Blank page",
+            image=render_illustrated_page(parts.closing_illustration, workspace, background_color),
+            spread="right",
+            nav_label="Closing Illustration" if has_right else None,
+        ),
+    ]
+
+
 def validate_storybook(storybook: Storybook, workspace: StoryWorkspace) -> None:
     """Validate that the storybook contains everything required for assembly.
 
@@ -327,28 +540,79 @@ def validate_storybook(storybook: Storybook, workspace: StoryWorkspace) -> None:
 
     if not storybook.title.strip():
         raise SystemExit("The storybook title must be a non-empty string before assembly.")
+    if not storybook.author.strip():
+        raise SystemExit("The storybook author must be a non-empty string before assembly.")
     if not storybook.scenes:
         raise SystemExit("The storybook does not contain any scenes to assemble.")
+    if not any(text.strip() for text in storybook.parts.back_cover.text):
+        raise SystemExit("The back cover teaser must be a non-empty string before assembly.")
+    if storybook.parts.front_cover.illustration is None:
+        raise SystemExit("The front cover must define an illustration before assembly.")
+
+    validate_image_path(
+        workspace,
+        storybook.parts.front_cover.illustration.image_path,
+        "Front cover illustration",
+    )
+    validate_optional_illustrated_page(workspace, storybook.parts.front_endpaper, "Front endpaper illustration")
+    validate_optional_illustrated_page(workspace, storybook.parts.frontispiece, "Frontispiece illustration")
+    validate_optional_illustrated_page(
+        workspace,
+        storybook.parts.closing_illustration,
+        "Closing illustration",
+    )
+    if storybook.parts.title_page.illustration is not None:
+        validate_image_path(
+            workspace,
+            storybook.parts.title_page.illustration.image_path,
+            "Title page illustration",
+        )
+    if storybook.parts.back_cover.illustration is not None:
+        validate_image_path(
+            workspace,
+            storybook.parts.back_cover.illustration.image_path,
+            "Back cover illustration",
+        )
 
     for scene_number, scene in enumerate(storybook.scenes, start=1):
         if not scene.text.strip():
             raise SystemExit(f"Scene {scene_number} ({scene.label}) has empty text.")
         if not scene.image_path.strip():
             raise SystemExit(f"Scene {scene_number} ({scene.label}) is missing image_path.")
+        validate_image_path(
+            workspace,
+            scene.image_path,
+            f"Scene {scene_number} ({scene.label}) illustration",
+        )
 
-        image_path = workspace.directory / scene.image_path
-        if not image_path.is_file():
-            raise SystemExit(
-                f"Scene {scene_number} ({scene.label}) is missing its illustration file: {image_path}"
-            )
 
-        try:
-            with Image.open(image_path) as image:
-                image.verify()
-        except Exception as error:
-            raise SystemExit(
-                f"Scene {scene_number} ({scene.label}) illustration could not be opened: {image_path}"
-            ) from error
+def validate_optional_illustrated_page(
+    workspace: StoryWorkspace,
+    page: PageSpec | None,
+    label: str,
+) -> None:
+    """Validate an optional illustrated page if present."""
+
+    if page is None or page.illustration is None:
+        return
+    validate_image_path(workspace, page.illustration.image_path, label)
+
+
+def validate_image_path(workspace: StoryWorkspace, relative_path: str, label: str) -> None:
+    """Validate that a referenced image exists and is readable."""
+
+    if not relative_path.strip():
+        raise SystemExit(f"{label} is missing image_path.")
+
+    image_path = workspace.directory / relative_path
+    if not image_path.is_file():
+        raise SystemExit(f"{label} is missing its illustration file: {image_path}")
+
+    try:
+        with Image.open(image_path) as image:
+            image.verify()
+    except Exception as error:
+        raise SystemExit(f"{label} could not be opened: {image_path}") from error
 
 
 def render_cover_page(title: str, background_color: tuple[int, int, int], text_color: tuple[int, int, int]) -> Image.Image:
@@ -397,6 +661,118 @@ def render_cover_page(title: str, background_color: tuple[int, int, int], text_c
         return page
 
     raise SystemExit("The story title does not fit on the cover page.")
+
+
+def render_front_cover_page(
+    title: str,
+    author: str,
+    image_path: Path,
+    text_mode: str | None,
+    text_color: tuple[int, int, int],
+) -> Image.Image:
+    """Render the front cover."""
+
+    page = render_illustration_page(image_path)
+    if text_mode == "embedded":
+        return page
+
+    canvas = page.convert("RGBA")
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    panel_top = round(PAGE_HEIGHT * 0.30)
+    panel_bottom = round(PAGE_HEIGHT * 0.72)
+    draw.rectangle(
+        [(TEXT_MARGIN_X - 30, panel_top), (PAGE_WIDTH - TEXT_MARGIN_X + 30, panel_bottom)],
+        fill=(255, 255, 255, 170),
+    )
+
+    title_box_top = panel_top + 70
+    title_box_height = round((panel_bottom - panel_top) * 0.55)
+    draw_centered_text_block(
+        draw=draw,
+        text=title,
+        box=(TEXT_MARGIN_X, title_box_top, PAGE_WIDTH - TEXT_MARGIN_X, title_box_top + title_box_height),
+        font_sizes=[TITLE_FONT_SIZE, 112, 100, 90, 82, 74],
+        line_spacing=TITLE_LINE_SPACING,
+        text_color=text_color,
+        bold=True,
+        error_message="The story title does not fit on the front cover.",
+    )
+    draw_centered_text_block(
+        draw=draw,
+        text=author,
+        box=(TEXT_MARGIN_X, panel_bottom - 230, PAGE_WIDTH - TEXT_MARGIN_X, panel_bottom - 90),
+        font_sizes=[AUTHOR_FONT_SIZE, 62, 56, 50],
+        line_spacing=AUTHOR_LINE_SPACING,
+        text_color=text_color,
+        bold=False,
+        error_message="The story author does not fit on the front cover.",
+    )
+    return canvas.convert("RGB")
+
+
+def render_title_page(
+    title: str,
+    author: str,
+    title_page: PageSpec,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> Image.Image:
+    """Render the title page."""
+
+    page = Image.new("RGB", (PAGE_WIDTH, PAGE_HEIGHT), background_color)
+    draw = ImageDraw.Draw(page)
+
+    title_top = round(PAGE_HEIGHT * 0.14)
+    title_bottom = round(PAGE_HEIGHT * (0.54 if title_page.illustration is None else 0.42))
+    draw_centered_text_block(
+        draw=draw,
+        text=title,
+        box=(TEXT_MARGIN_X, title_top, PAGE_WIDTH - TEXT_MARGIN_X, title_bottom),
+        font_sizes=[110, 98, 88, 78, 70],
+        line_spacing=24,
+        text_color=text_color,
+        bold=True,
+        error_message="The story title does not fit on the title page.",
+    )
+    draw_centered_text_block(
+        draw=draw,
+        text=author,
+        box=(TEXT_MARGIN_X, title_bottom + 30, PAGE_WIDTH - TEXT_MARGIN_X, title_bottom + 180),
+        font_sizes=[AUTHOR_FONT_SIZE, 62, 56, 50],
+        line_spacing=AUTHOR_LINE_SPACING,
+        text_color=text_color,
+        bold=False,
+        error_message="The story author does not fit on the title page.",
+    )
+
+    if title_page.illustration is not None:
+        illustration = render_illustration_page(workspace.directory / title_page.illustration.image_path)
+        illustration.thumbnail((round(PAGE_WIDTH * 0.34), round(PAGE_HEIGHT * 0.20)))
+        illustration_x = (PAGE_WIDTH - illustration.width) // 2
+        illustration_y = round(PAGE_HEIGHT * 0.70) - (illustration.height // 2)
+        page.paste(illustration, (illustration_x, illustration_y))
+
+    return page
+
+
+def render_text_page(
+    page: PageSpec | None,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+    error_message: str,
+) -> Image.Image:
+    """Render one generic text page or a blank fallback."""
+
+    if not has_page_text_content(page):
+        return render_blank_page(background_color)
+
+    return render_centered_text_page(
+        text="\n\n".join(text.strip() for text in page.text if text.strip()),
+        background_color=background_color,
+        text_color=text_color,
+        error_message=error_message,
+    )
 
 
 def render_scene_text_page(
@@ -475,6 +851,98 @@ def render_illustration_page(image_path: Path) -> Image.Image:
             method=Image.Resampling.LANCZOS,
             centering=(0.5, 0.5),
         ).convert("RGB")
+
+
+def render_back_cover_page(
+    back_cover: PageSpec,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> Image.Image:
+    """Render the back cover."""
+
+    teaser = "\n\n".join(text.strip() for text in back_cover.text if text.strip())
+    illustration = back_cover.illustration
+    if illustration is None:
+        return render_centered_text_page(
+            text=teaser,
+            background_color=background_color,
+            text_color=text_color,
+            error_message="The back-cover teaser does not fit on the page.",
+        )
+
+    page = render_illustration_page(workspace.directory / illustration.image_path)
+    if illustration.text_mode == "embedded":
+        return page
+    return overlay_back_cover_text(page, teaser, text_color)
+
+
+def overlay_back_cover_text(
+    page: Image.Image,
+    teaser: str,
+    text_color: tuple[int, int, int],
+) -> Image.Image:
+    """Overlay teaser text onto a full-page back-cover illustration."""
+
+    canvas = page.convert("RGBA")
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    panel_top = round(PAGE_HEIGHT * 0.58)
+    draw.rectangle(
+        [(TEXT_MARGIN_X - 30, panel_top), (PAGE_WIDTH - TEXT_MARGIN_X + 30, PAGE_HEIGHT - TEXT_MARGIN_Y + 40)],
+        fill=(255, 255, 255, 180),
+    )
+    draw_centered_text_block(
+        draw=draw,
+        text=teaser,
+        box=(TEXT_MARGIN_X, panel_top + 50, PAGE_WIDTH - TEXT_MARGIN_X, PAGE_HEIGHT - TEXT_MARGIN_Y),
+        font_sizes=[BODY_FONT_SIZE, 54, 50, 46, 42],
+        line_spacing=BODY_LINE_SPACING,
+        text_color=text_color,
+        bold=False,
+        error_message="The back-cover teaser does not fit on the illustration overlay.",
+    )
+    return canvas.convert("RGB")
+
+
+def render_illustrated_page(
+    page: PageSpec | None,
+    workspace: StoryWorkspace,
+    background_color: tuple[int, int, int],
+) -> Image.Image:
+    """Render an illustrated page or a blank fallback."""
+
+    if page is None or page.illustration is None:
+        return render_blank_page(background_color)
+    return render_illustration_page(workspace.directory / page.illustration.image_path)
+
+
+def render_blank_page(background_color: tuple[int, int, int]) -> Image.Image:
+    """Render a blank page."""
+
+    return Image.new("RGB", (PAGE_WIDTH, PAGE_HEIGHT), background_color)
+
+
+def render_centered_text_page(
+    text: str,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+    error_message: str,
+) -> Image.Image:
+    """Render a centered text page."""
+
+    page = Image.new("RGB", (PAGE_WIDTH, PAGE_HEIGHT), background_color)
+    draw = ImageDraw.Draw(page)
+    draw_centered_text_block(
+        draw=draw,
+        text=text,
+        box=(TEXT_MARGIN_X, TEXT_MARGIN_Y, PAGE_WIDTH - TEXT_MARGIN_X, PAGE_HEIGHT - TEXT_MARGIN_Y),
+        font_sizes=[BODY_FONT_SIZE, 54, 50, 46, 42],
+        line_spacing=BODY_LINE_SPACING,
+        text_color=text_color,
+        bold=False,
+        error_message=error_message,
+    )
+    return page
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -578,6 +1046,49 @@ def wrap_text(text: str, draw: ImageDraw.ImageDraw, font: ImageFont.FreeTypeFont
             lines.append("")
 
     return lines
+
+
+def draw_centered_text_block(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    box: tuple[int, int, int, int],
+    font_sizes: Sequence[int],
+    line_spacing: int,
+    text_color: tuple[int, int, int],
+    bold: bool,
+    error_message: str,
+) -> None:
+    """Draw centered wrapped text that fits inside the provided box."""
+
+    left, top, right, bottom = box
+    available_width = right - left
+    available_height = bottom - top
+
+    for font_size in font_sizes:
+        font = load_font(font_size, bold=bold)
+        lines = wrap_text(text, draw, font, available_width)
+        line_height = font.size + line_spacing
+        text_height = len(lines) * line_height - line_spacing
+        if text_height > available_height:
+            continue
+
+        y = top + ((available_height - text_height) // 2)
+        for line in lines:
+            if line:
+                line_bbox = draw.textbbox((0, 0), line, font=font)
+                line_width = line_bbox[2] - line_bbox[0]
+                x = left + ((available_width - line_width) // 2)
+                draw.text((x, y), line, fill=text_color, font=font)
+            y += line_height
+        return
+
+    raise SystemExit(error_message)
+
+
+def has_page_text_content(page: PageSpec | None) -> bool:
+    """Return whether a page contains any visible text content."""
+
+    return page is not None and any(text.strip() for text in page.text)
 
 
 def build_page_document(title: str, image_href: str, image_alt: str) -> str:
@@ -723,6 +1234,7 @@ def build_package_document(
           <metadata>
             <dc:identifier id="book-id">{escape(identifier)}</dc:identifier>
             <dc:title>{escape(storybook.title)}</dc:title>
+            <dc:creator>{escape(storybook.author)}</dc:creator>
             <dc:language>und</dc:language>
             <meta property="dcterms:modified">{modified}</meta>
             <meta property="rendition:layout">pre-paginated</meta>

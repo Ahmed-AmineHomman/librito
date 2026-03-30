@@ -6,6 +6,77 @@ from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
+class IllustrationSpec:
+    """Illustration content stored in the storybook.
+
+    Parameters
+    ----------
+    prompt:
+        Illustration prompt written in English.
+    image_path:
+        Relative path to the generated image within the story directory.
+    text_mode:
+        Whether reader-facing text is overlaid by the assembler or is already
+        embedded inside the illustration itself. Use ``None`` when the concept
+        is not relevant for the page.
+    """
+
+    prompt: str
+    image_path: str
+    text_mode: str | None = field(default=None)
+
+
+@dataclass(slots=True)
+class PageSpec:
+    """Reusable non-scene page content stored in the storybook.
+
+    Parameters
+    ----------
+    text:
+        Ordered reader-facing text blocks for the page.
+    illustration:
+        Optional illustration associated with the page.
+    """
+
+    text: list[str] = field(default_factory=list)
+    illustration: IllustrationSpec | None = field(default=None)
+
+
+@dataclass(slots=True)
+class BookParts:
+    """Non-scene book parts stored alongside the story scenes.
+
+    Parameters
+    ----------
+    front_cover:
+        Required front-cover page content.
+    front_endpaper:
+        Optional front-endpaper page content.
+    opening_page:
+        Optional dedication and/or epigraph page content.
+    frontispiece:
+        Optional frontispiece page content.
+    title_page:
+        Required title-page content.
+    closing_facing_page:
+        Optional text page facing the closing illustration.
+    closing_illustration:
+        Optional closing-illustration page content.
+    back_cover:
+        Required back-cover page content.
+    """
+
+    front_cover: PageSpec
+    front_endpaper: PageSpec | None = field(default=None)
+    opening_page: PageSpec | None = field(default=None)
+    frontispiece: PageSpec | None = field(default=None)
+    title_page: PageSpec = field(default_factory=PageSpec)
+    closing_facing_page: PageSpec | None = field(default=None)
+    closing_illustration: PageSpec | None = field(default=None)
+    back_cover: PageSpec = field(default_factory=PageSpec)
+
+
+@dataclass(slots=True)
 class StoryScene:
     """Single segmented story scene.
 
@@ -29,27 +100,33 @@ class StoryScene:
 
 @dataclass(slots=True)
 class Storybook:
-    """Segmented storybook ready for illustration generation.
+    """Segmented storybook ready for illustration generation and assembly.
 
     Parameters
     ----------
     title:
         Story title.
+    author:
+        Reader-facing author name.
     style:
         Global visual style description written in English.
     constraints:
-        Optional generation constraints.  When empty, the default constraints
+        Optional generation constraints. When empty, the default constraints
         shipped in ``librito/resources/prompt_constraints.txt`` are used.
     concepts:
         Mapping from anchor tags such as ``<CALMIO>`` to their expanded
         descriptions.
+    parts:
+        Structured non-scene book parts such as covers and front matter.
     scenes:
         Ordered story scenes to illustrate.
     """
 
     title: str
+    author: str
     style: str
     concepts: dict[str, str]
+    parts: BookParts
     scenes: list[StoryScene]
     constraints: str = field(default="")
 

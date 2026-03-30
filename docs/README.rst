@@ -6,12 +6,13 @@ Librito
 storybooks. The full pipeline is divided into three stages:
 
 1. **Story segmentation** — decomposing a natural-language story into a
-   structured JSON file containing scenes, illustration prompts, and visual
-   constants.
-2. **Illustration generation** — producing one illustration per scene from the
-   segmented story using an image generation model.
-3. **Assembly** — constructing the final illustrated book from scene texts
-   and generated illustrations.
+   structured JSON file containing canonical book metadata, non-scene book
+   parts, scenes, illustration prompts, and visual constants.
+2. **Illustration generation** — producing illustrations for scenes and
+   configured book parts from the segmented story using an image generation
+   model.
+3. **Assembly** — constructing the final illustrated book from structured book
+   parts, scene texts, and generated illustrations.
 
 Current State
 =============
@@ -23,7 +24,8 @@ The segmentation format and workflow are documented in
 :doc:`story_segmentation`.
 
 **Illustration generation** (stage 2) is implemented as runnable code and
-consumes the exported ``story.json``.
+generates scene illustrations plus any configured illustrated book parts from
+the exported ``story.json``.
 
 **Assembly** (stage 3) is implemented as a runnable helper that validates the
 available material, renders a fixed-layout book, and exports
@@ -83,17 +85,17 @@ On Windows PowerShell with the project virtual environment:
 
 A sample segmented story is available at ``docs/examples/leo/story.json``.
 
-This command reads ``database/leo/story.json``, generates missing scene
-illustrations inside ``database/leo/illustrations/``, and updates each scene's
-``image_path`` in place. Already generated scenes are skipped automatically
-(see :doc:`illustration_generation`).
+This command reads ``database/leo/story.json``, generates missing scene and
+book-part illustrations inside ``database/leo/illustrations/``, and updates
+each generated ``image_path`` in place. Already generated items are skipped
+automatically (see :doc:`illustration_generation`).
 
 Documentation
 =============
 
-* :doc:`story_segmentation` — the segmented story format and how to produce it.
-* :doc:`illustration_generation` — how illustration generation works.
-* :doc:`assembly_book` — how fixed-layout EPUB assembly works.
+* :doc:`story_segmentation` — the full storybook schema and editorial guidance.
+* :doc:`illustration_generation` — how storybook illustration generation works.
+* :doc:`assembly_book` — how fixed-layout EPUB assembly renders the book parts.
 * :doc:`complete_example` — the full Leo example from story to illustrations.
 
 Read them in that order.

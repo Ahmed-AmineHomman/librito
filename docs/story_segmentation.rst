@@ -2,30 +2,57 @@ Story Segmentation
 ==================
 
 The story segmentation stage transforms a raw story into a structured JSON file
-ready for illustration generation. The result captures:
+ready for illustration generation and book assembly. The result captures:
 
-* the story title,
+* the canonical book title and author,
 * one global visual style,
 * optional generation constraints,
 * visual concepts defined as anchors,
+* structured non-scene book parts such as covers and front matter,
 * an ordered list of scenes containing story text and illustration prompts.
 
-This page describes both the **segmentation standard** and the **agent-native
+This page describes both the **storybook schema** and the **agent-native
 workflow** used to produce it.
 
 Expected JSON Format
 --------------------
 
-The segmented story must be a valid JSON object with exactly this structure:
+The canonical storybook must be a valid JSON object with exactly this shape:
 
 .. code-block:: json
 
    {
      "title": "Story title",
+     "author": "Author name",
      "style": "Artistic style description in English",
      "constraints": "",
      "concepts": {
        "<CONCEPT_NAME>": "Detailed visual description of the concept"
+     },
+     "parts": {
+       "front_cover": {
+         "text": [],
+         "illustration": {
+           "prompt": "Illustration prompt in English",
+           "image_path": "",
+           "text_mode": "overlay"
+         }
+       },
+       "front_endpaper": null,
+       "opening_page": null,
+       "frontispiece": null,
+       "title_page": {
+         "text": [],
+         "illustration": null
+       },
+       "closing_facing_page": null,
+       "closing_illustration": null,
+       "back_cover": {
+         "text": [
+           "Reader-facing teaser text"
+         ],
+         "illustration": null
+       }
      },
      "scenes": [
        {
@@ -40,170 +67,259 @@ The segmented story must be a valid JSON object with exactly this structure:
 Field Reference
 ~~~~~~~~~~~~~~~
 
+Top-level fields
+++++++++++++++++
+
 ``title``
-   The book title.
+   Canonical book title. The assembler uses this on the front cover and title
+   page.
+
+``author``
+   Canonical reader-facing author name. The assembler uses this on the front
+   cover and title page.
 
 ``style``
-   A single English description of the visual style applied to all
+   A single English description of the visual style applied to all generated
    illustrations. This value is automatically prefixed to every scene prompt
-   during generation.
+   during scene illustration generation.
 
 ``constraints``
-   Optional generation constraints as a single string. When empty (the default),
-   the built-in constraints shipped in
-   ``librito/resources/prompt_constraints.txt`` are used. Populate this field
-   only when the story or user requires specific constraints beyond the defaults.
+   Optional generation constraints as a single string. When empty, the built-in
+   constraints shipped in ``librito/resources/prompt_constraints.txt`` are used.
 
 ``concepts``
-   A dictionary of reusable visual anchors (characters, places, objects). Each
-   key is an uppercase tag like ``<LEO>`` or ``<LIVING_ROOM>`` and each value is
-   a stable visual description. During generation, tags in scene prompts are
-   replaced by their description.
+   A dictionary of reusable visual anchors such as characters, settings, and
+   recurring objects. Each key is an uppercase tag like ``<LEO>`` or
+   ``<LIVING_ROOM>`` and each value is a stable visual description.
 
-   In interactive editing workflows, concepts may be authored from
-   plain names such as ``leo`` or ``living room`` and normalized to canonical
-   keys such as ``<LEO>`` and ``<LIVING_ROOM>``.
+``parts``
+   Structured non-scene pages used by the final book.
+
+Book-part fields
+++++++++++++++++
+
+Every book-part slot stores the same ``PageSpec`` structure:
+
+* ``text``: an ordered array of reader-facing strings,
+* ``illustration``: either ``null`` or an illustration object.
+
+The illustration object always contains:
+
+* ``prompt``: illustration prompt written in English,
+* ``image_path``: relative path to the generated image,
+* ``text_mode``: either ``"overlay"``, ``"embedded"``, or ``null`` when that
+  distinction is not relevant for the page.
+
+The slot-specific meaning is interpreted by the assembler:
+
+``parts.front_cover``
+   Required page object. In practice, assembly expects its illustration to be
+   present and uses ``text_mode`` to decide whether to overlay the canonical
+   title and author.
+
+``parts.front_endpaper``
+   Optional page object or ``null``. When present, it usually uses only
+   ``illustration``.
+
+``parts.opening_page``
+   Optional page object or ``null``. When present, its ``text`` array carries
+   the dedication and/or epigraph.
+
+``parts.frontispiece``
+   Optional page object or ``null``. When present, it usually uses only
+   ``illustration``.
+
+``parts.title_page``
+   Required page object. The assembler always renders the canonical title and
+   author; the optional illustration is treated as a small supporting image.
+
+``parts.closing_facing_page``
+   Optional page object or ``null``. When present, its ``text`` array carries
+   the free closing text.
+
+``parts.closing_illustration``
+   Optional page object or ``null``. When present, it usually uses only
+   ``illustration``.
+
+``parts.back_cover``
+   Required page object. In practice, assembly expects ``text`` to contain the
+   teaser, and when an illustration is present it is always treated as a
+   full-page image. ``text_mode`` determines whether the teaser is overlaid by
+   the assembler or already embedded in that image.
+
+Scene fields
+++++++++++++
 
 ``scenes[].label``
-   Stable identifier for the scene. Labels must be unique and non-empty. They
-   do not define order; the order comes from the ``scenes`` array itself.
+   Stable identifier for the scene. Labels must be unique and non-empty.
 
 ``scenes[].text``
-   The story text for the scene, written in the language of the original story.
+   Reader-facing scene text written in the language of the original story.
 
 ``scenes[].prompt``
-   The illustration prompt for the scene, always written in English. It should
-   reference concepts through their tags whenever those concepts
-   appear in more than one scene.
+   Scene illustration prompt written in English.
 
 ``scenes[].image_path``
-   Reserved for generated image paths. Segmentation tools do not modify it.
+   Relative path to the generated scene illustration inside the story
+   workspace.
+
+Schema vs. Guidelines
+---------------------
+
+The repository deliberately separates:
+
+* **schema**: which attributes exist, whether they are required, and their
+  basic types,
+* **skills and specs**: what those fields should contain semantically,
+* **assembly**: how the stored content is finally laid out on pages.
+
+As a result, the JSON schema does **not** enforce editorial rules such as:
+
+* whether a front cover should use framing rather than embedded text,
+* whether the front endpaper or the frontispiece should carry the quieter image,
+* whether the closing illustration should avoid or embrace end-of-story spoilers.
+
+Those are creative and layout guidelines handled by skills and documentation,
+not by structural validation.
+
+Illustration and Text Guidelines
+--------------------------------
+
+The following guidelines are repository standards for authoring content. They
+are advisory, not schema rules.
+
+Front cover
+~~~~~~~~~~~
+
+* Always design for title and author visibility.
+* When ``text_mode`` is ``overlay``, the assembler adds the title and author on
+  top of the illustration.
+* When ``text_mode`` is ``embedded``, the title and author are assumed to
+  already appear inside the image, so the assembler does not add them again.
+* The illustration should either represent an iconic story moment or combine
+  the story's main recurring concepts into a cover-specific composition.
+
+Front endpaper and frontispiece
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* These pages work best as calmer, less cluttered images.
+* Prefer contemplative subjects such as a setting, a single object, or a quiet
+  character moment.
+* In most books, only one of ``front_endpaper`` or ``frontispiece`` should take
+  the more prominent illustration role to avoid visual overload.
+
+Title page
+~~~~~~~~~~
+
+* The assembler always places the canonical ``title`` and ``author`` on the
+  title page.
+* The optional title-page illustration should stay small and simple.
+* The illustration should support the title page rather than dominate it.
+
+Opening page
+~~~~~~~~~~~~
+
+* The page ``text`` array may contain one dedication, one epigraph, or both in
+  reading order.
+* A dedication addresses someone directly.
+* An epigraph is a short quote that sets the tone.
+
+Closing illustration
+~~~~~~~~~~~~~~~~~~~~
+
+* The closing illustration may reflect the story ending more directly than the
+  front matter does.
+* It can visually reference the final emotional note or the resolved state of
+  the story.
+
+Back cover
+~~~~~~~~~~
+
+* The back cover always stores its teaser inside ``text``.
+* When back-cover ``text_mode`` is ``overlay``, the assembler renders the teaser
+  on top of the full-page illustration.
+* When ``text_mode`` is ``embedded``, the teaser is assumed to already be part
+  of the supplied illustration and is not drawn again by the assembler.
 
 Running Example
 ---------------
 
 The Leo sample story (``docs/examples/leo/story.json``) illustrates the format.
-Shortened excerpt showing one scene:
+Shortened excerpt showing the global fields, book parts, and one scene:
 
 .. code-block:: json
 
    {
      "title": "Léo et sa voiture rouge",
+     "author": "Librito Example",
      "style": "Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive characters",
      "constraints": "",
      "concepts": {
-       "<LEO>": "A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.",
-       "<TOY_CAR>": "A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.",
-       "<LIVING_ROOM>": "A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight."
+       "<LEO>": "A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants."
+     },
+     "parts": {
+       "front_cover": {
+         "text": [],
+         "illustration": {
+           "prompt": "<LEO> smiles while holding his <TOY_CAR> in the warm light of the <LIVING_ROOM>.",
+           "image_path": "",
+           "text_mode": "overlay"
+         }
+       },
+       "front_endpaper": null,
+       "opening_page": null,
+       "frontispiece": null,
+       "title_page": {
+         "text": [],
+         "illustration": null
+       },
+       "closing_facing_page": null,
+       "closing_illustration": null,
+       "back_cover": {
+         "text": [
+           "Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée."
+         ],
+         "illustration": null
+       }
      },
      "scenes": [
        {
          "label": "scene-find-car",
-         "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge qu'il ne quitte jamais...",
-         "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>, smiling with relief as he pulls his <TOY_CAR> from under the sofa.",
+         "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge...",
+         "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>...",
          "image_path": ""
        }
      ]
    }
 
-In this example:
+Segmentation Workflow
+---------------------
 
-* the story text stays in French,
-* the illustration prompt is written in English,
-* concepts are defined once and referenced by tag,
-* scene identity is handled by ``label``,
-* scene order is defined by the list order,
-* ``constraints`` is empty because the default constraints apply.
-
-Segmentation Architecture
--------------------------
-
-The segmentation workflow is agentic, but the underlying design is simple:
-
-1. A source story is loaded.
-2. A mutable segmentation state is created or resumed.
-3. The agent iteratively edits that state through a constrained toolset.
-4. The agent uses analysis tools to inspect the current draft.
-5. The final storybook is exported only when validation passes.
-
-This design deliberately separates:
-
-* **creative work**: choosing scenes, phrasing scene text, selecting visual
-  emphasis, and defining concept descriptions;
-* **structural guarantees**: schema validity, anchor usage, and prompt
-  consistency.
-
-The state being edited is the storybook itself: global attributes, concepts,
-and ordered scenes.
-
-Segmentation Instructions
--------------------------
-
-The segmentation workflow should follow a narrow workflow:
+The segmentation workflow remains agentic, but the underlying design is simple:
 
 1. Read the full story.
-2. Inspect the current segmentation draft.
-3. Define or update the title, style, and optional constraints.
-4. Define concepts only for visually important concepts that appear in
-   more than one scene.
-5. Build scenes in narrative order.
-6. Write scene texts in the story language.
-7. Write scene prompts in English, using explicit anchors like ``<LEO>`` when a
-   concept is referenced.
-8. Run prompt-consistency checks.
-9. Repair the draft until validation passes.
-10. Export the storybook.
+2. Inspect the current storybook draft.
+3. Define or revise the canonical title, author, style, and optional constraints.
+4. Define the required and optional book parts relevant to the intended book.
+5. Define concepts only for visually important concepts that recur.
+6. Build scenes in narrative order.
+7. Write scene texts in the story language.
+8. Write illustration prompts in English.
+9. Run prompt-consistency checks.
+10. Repair weak or invalid state until the artifact is structurally valid.
 
 Prompt Consistency
 ------------------
 
-Prompt consistency is treated as a concrete validation problem.
-
-The first validation slice checks only:
+Prompt consistency is currently enforced for scene prompts through the existing
+validator stack:
 
 * undefined anchors,
 * unused concepts,
 * anchors used in exactly one unique scene.
 
-This keeps the validator narrow and deterministic while still enforcing the core
-anchor policy:
-
-* concepts should be anchored,
-* one-scene concepts should remain inline,
-* every anchored prompt must remain resolvable.
-
-Toolset
--------
-
-An implementation can expose the following categories of tools:
-
-Read tools
-~~~~~~~~~~
-
-* get the full story,
-* get the title, style, and constraints,
-* list concepts,
-* list scenes in their current order.
-
-Write tools
-~~~~~~~~~~~
-
-* set the title, style, and constraints,
-* add, remove, and rename concepts,
-* add, update, move, and delete scenes.
-
-Analysis tools
-~~~~~~~~~~~~~~
-
-* count concept occurrences across the story,
-* check prompt consistency,
-* resolve prompts,
-* inspect scenes with resolved prompts when needed.
-
-Finalization
-~~~~~~~~~~~~
-
-* export the final storybook only when validation succeeds.
+This keeps the deterministic checks narrow while preserving the repository's
+core scene-illustration policy.
 
 Implementation
 --------------
@@ -211,20 +327,9 @@ Implementation
 The current implementation is repository-native rather than script-driven:
 
 * ``story.md`` stores the raw source story,
-* ``story.json`` stores the canonical segmentation artifact,
+* ``story.json`` stores the canonical storybook artifact,
 * Codex performs the semantic segmentation work directly in the workspace,
 * helper scripts provide deterministic validation and downstream processing.
-
-More concretely:
-
-* ``story.md`` stores the source story text,
-* ``story.json`` stores the exported validated segmentation.
-
-The current runtime uses:
-
-* Codex skills for the segmentation workflow,
-* repository helper scripts for deterministic checks,
-* Gemini and other configured providers for downstream generation or evaluation.
 
 Runtime configuration comes from environment variables:
 
@@ -235,17 +340,19 @@ Runtime configuration comes from environment variables:
 Checklist
 ---------
 
-Before a segmentation is passed to illustration generation, verify:
+Before a storybook is passed downstream, verify:
 
 * the file is valid JSON,
-* top-level keys are exactly ``title``, ``style``, ``constraints``,
-  ``concepts``, and ``scenes``,
+* top-level keys are exactly ``title``, ``author``, ``style``, ``constraints``,
+  ``concepts``, ``parts``, and ``scenes``,
+* ``parts`` contains exactly the repository-defined book-part keys,
+* required parts are present as objects,
+* optional parts are either valid objects or ``null``,
 * each scene contains exactly ``label``, ``text``, ``prompt``, and
   ``image_path``,
 * labels are unique non-empty strings,
-* prompts are in English,
-* scene texts are in the story language,
-* every tag used in a prompt is defined in ``concepts``,
+* prompts are written in English,
+* scene texts stay in the story language,
+* every scene tag used in a prompt is defined in ``concepts``,
 * unused concepts are removed,
 * anchors used in one unique scene are removed or inlined.
-

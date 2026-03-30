@@ -17,7 +17,7 @@ if __package__ in {None, ""}:
 from librito.environment import load_repository_environment
 from librito.io import save_storybook, save_units
 from librito.logging import add_logging_arguments, configure_logging
-from librito.models import Storybook, Units
+from librito.models import BookParts, IllustrationSpec, PageSpec, Storybook, Units
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
@@ -57,8 +57,8 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
               - creates the illustrations directory
 
             Examples:
-              python helpers/initialize.py --story absurd_dog --filepath sample_story.md
-              .\\.venv\\Scripts\\python.exe helpers/initialize.py --story absurd_dog --filepath sample_story.md
+              python helpers/initialize.py --story absurd_dog --filepath story.md
+              .\\.venv\\Scripts\\python.exe helpers/initialize.py --story absurd_dog --filepath story.md
             """
         ).strip(),
         formatter_class=RawDescriptionHelpFormatter,
@@ -118,9 +118,21 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
         save_storybook(
             Storybook(
                 title="",
+                author="",
                 style="",
                 constraints="",
                 concepts={},
+                parts=BookParts(
+                    front_cover=PageSpec(
+                        illustration=IllustrationSpec(
+                            prompt="",
+                            image_path="",
+                            text_mode="overlay",
+                        )
+                    ),
+                    title_page=PageSpec(),
+                    back_cover=PageSpec(),
+                ),
                 scenes=[],
             ),
             workspace.storybook_file,

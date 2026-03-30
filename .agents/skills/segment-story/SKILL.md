@@ -7,6 +7,7 @@ Use this skill to create or revise the segmentation layer of a storybook for ill
 
 This skill defines the semantic work of segmentation:
 
+- defining the canonical title and author,
 - choosing the scene breakdown,
 - preserving story coverage,
 - preserving the story flow,
@@ -24,17 +25,19 @@ Workflow
 1. Read the full story carefully.
 2. Locate the current story workspace and inspect any existing segmentation artifacts.
 3. Determine whether the current segmentation should be created, kept, or revised.
-4. Identify visual concepts in the story:
+4. Define or refine the canonical title and author for the book.
+5. Determine which non-scene book parts should be present in the current storybook draft.
+6. Identify visual concepts in the story:
    * characters,
    * important settings,
    * important recurring objects.
-5. Split the story into scenes while preserving narrative flow, story coverage, and visual clarity.
-6. Ensure that each scene captures a distinct and illustratable moment.
-7. Write each scene text in the language of the story.
-8. Define concept anchors only for concepts that appear in more than one scene.
-9. If the canonical artifact includes prompt fields, keep them aligned with the scene intent and anchor system, but leave detailed prompt optimization to a dedicated prompting skill.
-10. Run the relevant repository validators and consistency checks.
-11. Repair weak or invalid segmentation state before declaring the work complete.
+7. Split the story into scenes while preserving narrative flow, story coverage, and visual clarity.
+8. Ensure that each scene captures a distinct and illustratable moment.
+9. Write each scene text in the language of the story.
+10. Define concept anchors only for concepts that appear in more than one scene.
+11. If the canonical artifact includes prompt fields outside scenes, keep them structurally aligned with the intended book part, but leave detailed prompt optimization to a dedicated prompting skill.
+12. Run the relevant repository validators and consistency checks.
+13. Repair weak or invalid segmentation state before declaring the work complete.
 
 Anchor Definition
 -----------------

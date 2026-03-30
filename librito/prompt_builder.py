@@ -61,7 +61,27 @@ def build_render_prompt(
         Final prompt to send to the image generation API.
     """
 
-    resolved_prompt = resolve_prompt(scene.prompt, storybook.concepts).strip()
+    return build_render_prompt_from_text(storybook, scene.prompt)
+
+
+def build_render_prompt_from_text(storybook: Storybook, prompt: str) -> str:
+    """Build the render prompt for one raw illustration prompt string.
+
+    Parameters
+    ----------
+    storybook:
+        Storybook containing the global style, constraints, and recurring
+        concepts.
+    prompt:
+        Illustration prompt to resolve and package for generation.
+
+    Returns
+    -------
+    str
+        Final prompt to send to the image generation API.
+    """
+
+    resolved_prompt = resolve_prompt(prompt, storybook.concepts).strip()
     template = _RESOURCE_DIRECTORY.joinpath("image_prompt_template.txt").read_text(encoding="utf-8")
     if storybook.constraints:
         constraints = storybook.constraints.strip()
