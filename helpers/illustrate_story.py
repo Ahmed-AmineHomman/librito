@@ -17,7 +17,7 @@ from librito.environment import load_repository_environment
 from librito.io import load_storybook, save_storybook
 from librito.logging import add_logging_arguments, configure_logging
 from librito.providers import build_image_client
-from librito.prompt_builder import build_scene_prompt
+from librito.prompt_builder import build_render_prompt
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
@@ -177,7 +177,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         # Build the final prompt just before generation so the script stays
         # easy to read from top to bottom.
-        prompt = build_scene_prompt(storybook, scene)
+        prompt = build_render_prompt(storybook, scene)
         generated_image = client.generate_image(prompt)
 
         output_path = output_directory / f"scene-{scene_position:03d}.png"

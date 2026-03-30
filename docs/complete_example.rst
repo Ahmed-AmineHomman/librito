@@ -30,8 +30,8 @@ Segmented Story
 ---------------
 
 After segmentation (see :doc:`story_segmentation`), the story becomes a
-structured JSON file. The segmentation defines a visual style, three recurring
-concept tags, and three scenes:
+structured JSON file. The segmentation defines a visual style, three concept
+tags, and three scenes:
 
 .. literalinclude:: examples/leo/story.json
    :language: json
@@ -92,3 +92,4 @@ Scene 3
    :alt: Léo enjoys a snack with his mother in the living room.
    :width: 80%
    :align: center
+

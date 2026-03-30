@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from librito.models import NormalizedStory, StoryScene, StoryUnit, Storybook
+from librito.models import StoryScene, Storybook, Unit, Units
 
-_STORYBOOK_TOP_LEVEL_KEYS = {"title", "style", "constraints", "recurring_concepts", "scenes"}
+_STORYBOOK_TOP_LEVEL_KEYS = {"title", "style", "constraints", "concepts", "scenes"}
 _STORYBOOK_SCENE_KEYS = {"label", "text", "prompt", "image_path"}
-_NORMALIZED_STORY_TOP_LEVEL_KEYS = {"units"}
-_NORMALIZED_STORY_UNIT_KEYS = {"label", "type", "text"}
+_UNITS_TOP_LEVEL_KEYS = {"units"}
+_UNIT_KEYS = {"label", "type", "text"}
 _ALLOWED_UNIT_TYPES = {"narration", "dialogue_turn"}
 
 
@@ -37,13 +37,13 @@ def load_storybook(path: Path) -> Storybook:
     payload = _load_json_object(path)
     _require_exact_keys(payload, _STORYBOOK_TOP_LEVEL_KEYS, "story")
 
-    recurring_concepts = payload["recurring_concepts"]
-    if not isinstance(recurring_concepts, dict):
-        raise ValueError("story.recurring_concepts must be an object.")
+    concepts = payload["concepts"]
+    if not isinstance(concepts, dict):
+        raise ValueError("story.concepts must be an object.")
 
     parsed_concepts: dict[str, str] = {}
-    for key, value in recurring_concepts.items():
-        parsed_concepts[str(key)] = _require_string(value, f"recurring_concepts.{key}")
+    for key, value in concepts.items():
+        parsed_concepts[str(key)] = _require_string(value, f"concepts.{key}")
 
     scenes_payload = payload["scenes"]
     if not isinstance(scenes_payload, list):
@@ -72,7 +72,7 @@ def load_storybook(path: Path) -> Storybook:
         title=_require_string(payload["title"], "story.title"),
         style=_require_string(payload["style"], "story.style"),
         constraints=_require_string(payload["constraints"], "story.constraints"),
-        recurring_concepts=parsed_concepts,
+        concepts=parsed_concepts,
         scenes=scenes,
     )
 
@@ -93,7 +93,7 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
             "title": storybook.title,
             "style": storybook.style,
             "constraints": storybook.constraints,
-            "recurring_concepts": storybook.recurring_concepts,
+            "concepts": storybook.concepts,
             "scenes": [
                 {
                     "label": scene.label,
@@ -108,8 +108,8 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
     )
 
 
-def load_normalized_story(path: Path) -> NormalizedStory:
-    """Load and validate a normalized story JSON file.
+def load_units(path: Path) -> Units:
+    """Load and validate a units JSON file.
 
     Parameters
     ----------
@@ -118,8 +118,8 @@ def load_normalized_story(path: Path) -> NormalizedStory:
 
     Returns
     -------
-    NormalizedStory
-        Parsed normalized story instance.
+    Units
+        Parsed units instance.
 
     Raises
     ------
@@ -128,18 +128,18 @@ def load_normalized_story(path: Path) -> NormalizedStory:
     """
 
     payload = _load_json_object(path)
-    _require_exact_keys(payload, _NORMALIZED_STORY_TOP_LEVEL_KEYS, "normalized_story")
+    _require_exact_keys(payload, _UNITS_TOP_LEVEL_KEYS, "units")
 
     units_payload = payload["units"]
     if not isinstance(units_payload, list):
-        raise ValueError("normalized_story.units must be an array.")
+        raise ValueError("units.units must be an array.")
 
-    units: list[StoryUnit] = []
+    units: list[Unit] = []
     seen_labels: set[str] = set()
     for position, unit_payload in enumerate(units_payload, start=1):
         if not isinstance(unit_payload, dict):
             raise ValueError(f"unit {position} must be an object.")
-        _require_exact_keys(unit_payload, _NORMALIZED_STORY_UNIT_KEYS, f"unit {position}")
+        _require_exact_keys(unit_payload, _UNIT_KEYS, f"unit {position}")
         unit_label = _require_non_empty_trimmed_string(unit_payload["label"], f"unit {position}.label")
         if unit_label in seen_labels:
             raise ValueError(f"unit labels must be unique, duplicate found: {unit_label}.")
@@ -152,23 +152,23 @@ def load_normalized_story(path: Path) -> NormalizedStory:
             )
 
         units.append(
-            StoryUnit(
+            Unit(
                 label=unit_label,
                 type=unit_type,
                 text=_require_non_empty_trimmed_string(unit_payload["text"], f"unit {position}.text"),
             )
         )
 
-    return NormalizedStory(units=units)
+    return Units(units=units)
 
 
-def save_normalized_story(normalized_story: NormalizedStory, path: Path) -> None:
-    """Persist a normalized story to JSON.
+def save_units(units: Units, path: Path) -> None:
+    """Persist a units artifact to JSON.
 
     Parameters
     ----------
-    normalized_story:
-        Normalized story instance to serialize.
+    units:
+        Units instance to serialize.
     path:
         Destination JSON path.
     """
@@ -181,7 +181,7 @@ def save_normalized_story(normalized_story: NormalizedStory, path: Path) -> None
                     "type": unit.type,
                     "text": unit.text,
                 }
-                for unit in normalized_story.units
+                for unit in units.units
             ]
         },
         path,

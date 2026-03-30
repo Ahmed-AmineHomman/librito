@@ -1,6 +1,6 @@
 ---
 name: segment-story
-description: Segment a source story into the repository's canonical storybook artifact by choosing visually meaningful scenes, preserving narrative flow, and defining consistent recurring anchors. Use when Codex must create, refine, or validate the story structure for an illustrated book inside the workspace; use a separate skill for detailed prompt, style, or constraint work.
+description: Segment a source story into the repository's canonical storybook artifact by choosing visually meaningful scenes, preserving narrative flow, and defining consistent anchors. Use when Codex must create, refine, or validate the story structure for an illustrated book inside the workspace; use a separate skill for detailed prompt, style, or constraint work.
 ---
 
 Use this skill to create or revise the segmentation layer of a storybook for illustrated-book generation.
@@ -10,7 +10,7 @@ This skill defines the semantic work of segmentation:
 - choosing the scene breakdown,
 - preserving story coverage,
 - preserving the story flow,
-- defining recurring visual anchors,
+- defining visual anchors,
 - writing scene texts,
 - ensuring each scene corresponds to a clear illustratable moment.
 
@@ -24,14 +24,14 @@ Workflow
 1. Read the full story carefully.
 2. Locate the current story workspace and inspect any existing segmentation artifacts.
 3. Determine whether the current segmentation should be created, kept, or revised.
-4. Identify recurring visual concepts in the story:
+4. Identify visual concepts in the story:
    * characters,
    * important settings,
    * important recurring objects.
 5. Split the story into scenes while preserving narrative flow, story coverage, and visual clarity.
 6. Ensure that each scene captures a distinct and illustratable moment.
 7. Write each scene text in the language of the story.
-8. Define recurring concept anchors only for concepts that appear in more than one scene.
+8. Define concept anchors only for concepts that appear in more than one scene.
 9. If the canonical artifact includes prompt fields, keep them aligned with the scene intent and anchor system, but leave detailed prompt optimization to a dedicated prompting skill.
 10. Run the relevant repository validators and consistency checks.
 11. Repair weak or invalid segmentation state before declaring the work complete.
@@ -39,7 +39,7 @@ Workflow
 Anchor Definition
 -----------------
 
-Recurring concepts are stored as anchor mappings from canonical tags to stable visual descriptions.
+Concepts are stored as anchor mappings from canonical tags to stable visual descriptions.
 
 Anchor tags must use the strict format ``<NAME>`` with uppercase letters,
 digits, and underscores only.
@@ -82,7 +82,7 @@ Before declaring the segmentation complete, verify through repository tools and 
 * the story is covered without major omissions,
 * scenes are distinct enough to avoid obvious redundancy,
 * all anchors used in prompts are defined,
-* unused recurring concepts are removed,
+* unused concepts are removed,
 * anchors used in only one scene are removed or inlined,
 * the resulting segmentation is suitable for downstream illustration generation.
 
@@ -92,3 +92,4 @@ Completion
 The work is complete only when the segmentation is both semantically satisfactory and structurally validated.
 
 If a storage-management skill exists, use it for file placement and naming.
+

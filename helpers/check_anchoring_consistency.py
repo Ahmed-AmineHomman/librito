@@ -42,10 +42,10 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description=dedent(
             """
-            Check whether recurring concept anchors are used consistently.
+            Check whether concept anchors are used consistently.
 
             Use this after segmentation to validate the relationship between
-            ``recurring_concepts`` and the anchor tags referenced inside scene
+            ``concepts`` and the anchor tags referenced inside scene
             prompts. The script always checks the full storybook, then optionally
             expands selected anchors for closer inspection.
             """
@@ -54,8 +54,8 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             """
             Checks performed:
               - undefined anchors used in prompts
-              - defined recurring concepts that are never used
-              - defined recurring concepts used in only one scene
+              - defined concepts that are never used
+              - defined concepts used in only one scene
 
             Detail modes:
               summary   Global counts and pass/fail checks only.
@@ -131,7 +131,7 @@ def build_anchor_report(
     input_json = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", input_json)
     storybook = load_storybook(input_json)
-    defined_anchors = sorted(storybook.recurring_concepts)
+    defined_anchors = sorted(storybook.concepts)
     report = check_prompt_consistency(storybook)
     undefined_anchor_names = sorted(
         {
@@ -150,7 +150,7 @@ def build_anchor_report(
     selectable_anchors = defined_anchors + [
         anchor
         for anchor in undefined_anchor_names
-        if anchor not in storybook.recurring_concepts
+        if anchor not in storybook.concepts
     ]
     detailed_anchors = _resolve_anchor_names(
         available_anchors=selectable_anchors,
@@ -172,7 +172,7 @@ def build_anchor_report(
         f"- **Story:** {workspace.story}",
         f"- **Title:** {storybook.title}",
         f"- **Scenes:** {len(storybook.scenes)}",
-        f"- **Defined recurring concepts:** {len(storybook.recurring_concepts)}",
+        f"- **Defined concepts:** {len(storybook.concepts)}",
         f"- **Result:** {'PASS' if is_consistent else 'FAIL'}",
         f"- **Detail mode:** {details}",
         "",
@@ -181,14 +181,14 @@ def build_anchor_report(
         "| Metric | Value |",
         "| --- | ---: |",
         f"| Undefined anchors | {len(undefined_anchor_names)} |",
-        f"| Unused recurring concepts | {len(unused_anchors)} |",
-        f"| Single-scene recurring concepts | {len(single_scene_anchors)} |",
+        f"| Unused concepts | {len(unused_anchors)} |",
+        f"| Single-scene concepts | {len(single_scene_anchors)} |",
         "",
         "## Checks",
         "",
         _format_check("Undefined anchors in prompts", len(undefined_anchor_names)),
-        _format_check("Unused recurring concepts", len(unused_anchors)),
-        _format_check("Recurring concepts used in only one scene", len(single_scene_anchors)),
+        _format_check("Unused concepts", len(unused_anchors)),
+        _format_check("Concepts used in only one scene", len(single_scene_anchors)),
     ]
 
     if details != "summary":
@@ -204,7 +204,7 @@ def build_anchor_report(
             ]
         )
         for anchor in detailed_anchors:
-            kind = "defined" if anchor in storybook.recurring_concepts else "undefined"
+            kind = "defined" if anchor in storybook.concepts else "undefined"
             usage_status = _determine_anchor_status(
                 anchor=anchor,
                 is_defined=kind == "defined",
@@ -368,7 +368,7 @@ def _determine_anchor_status(
     anchor:
         Anchor name to classify.
     is_defined:
-        Whether the anchor is a declared recurring concept.
+        Whether the anchor is a declared concept.
     unused_anchors:
         Anchors defined but unused across prompts.
     single_scene_anchors:

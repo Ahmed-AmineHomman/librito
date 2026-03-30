@@ -17,7 +17,7 @@ if __package__ in {None, ""}:
 
 from librito.environment import load_repository_environment
 from librito.logging import add_logging_arguments, configure_logging
-from librito.io import load_normalized_story, load_storybook
+from librito.io import load_storybook, load_units
 from librito.providers import build_embedding_client
 from librito.workspace import StoryWorkspace
 
@@ -30,7 +30,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description=dedent(
             """
-            Check how well storybook scenes align with normalized story units.
+            Check how well storybook scenes align with units.
 
             Use this after segmentation when you want a semantic sanity check
             between ``story.json`` scenes and ``units.json``. The script always
@@ -132,13 +132,13 @@ def build_semantic_report(
     units_path = workspace.require_units_file()
     logger.info("Loading storybook from %s.", storybook_path)
     storybook = load_storybook(storybook_path)
-    logger.info("Loading normalized story from %s.", units_path)
-    normalized_story = load_normalized_story(units_path)
+    logger.info("Loading units from %s.", units_path)
+    units = load_units(units_path)
 
     if not storybook.scenes:
         raise ValueError("The storybook does not contain any scenes to evaluate.")
-    if not normalized_story.units:
-        raise ValueError("The normalized story does not contain any units to evaluate.")
+    if not units.units:
+        raise ValueError("The units file does not contain any units to evaluate.")
 
     selected_scene_labels = _resolve_scene_labels(
         available_labels=[scene.label for scene in storybook.scenes],
@@ -151,16 +151,16 @@ def build_semantic_report(
     logger.info(
         "Computing semantic similarity for %d scene(s) against %d unit(s).",
         len(storybook.scenes),
-        len(normalized_story.units),
+        len(units.units),
     )
-    unit_embeddings = client.embed_texts([unit.text for unit in normalized_story.units])
+    unit_embeddings = client.embed_texts([unit.text for unit in units.units])
     scene_embeddings = client.embed_texts([scene.text for scene in storybook.scenes])
 
     scene_scores: list[dict[str, object]] = []
     for scene, scene_embedding in zip(storybook.scenes, scene_embeddings):
         best_score = _cosine_similarity(scene_embedding, unit_embeddings[0])
-        best_unit = normalized_story.units[0]
-        for unit, unit_embedding in zip(normalized_story.units[1:], unit_embeddings[1:]):
+        best_unit = units.units[0]
+        for unit, unit_embedding in zip(units.units[1:], unit_embeddings[1:]):
             score = _cosine_similarity(scene_embedding, unit_embedding)
             if score > best_score:
                 best_score = score
@@ -190,7 +190,7 @@ def build_semantic_report(
         f"- **Provider:** {provider}",
         f"- **Model:** {model}",
         f"- **Scenes:** {len(storybook.scenes)}",
-        f"- **Story units:** {len(normalized_story.units)}",
+        f"- **Units:** {len(units.units)}",
         f"- **Detail mode:** {details}",
         "",
         "## Score Summary",

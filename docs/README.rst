@@ -25,7 +25,9 @@ The segmentation format and workflow are documented in
 **Illustration generation** (stage 2) is implemented as runnable code and
 consumes the exported ``story.json``.
 
-**Assembly** (stage 3) is not yet implemented.
+**Assembly** (stage 3) is implemented as a runnable helper that validates the
+available material, renders a fixed-layout book, and exports
+``database/<story>/story.epub``.
 
 A sample story (Leo) is included under ``docs/examples/leo/`` with both the
 original text and the segmented JSON ready for illustration generation.
@@ -91,6 +93,8 @@ Documentation
 
 * :doc:`story_segmentation` — the segmented story format and how to produce it.
 * :doc:`illustration_generation` — how illustration generation works.
+* :doc:`assembly_storybook` — how fixed-layout EPUB assembly works.
 * :doc:`complete_example` — the full Leo example from story to illustrations.
 
 Read them in that order.
+

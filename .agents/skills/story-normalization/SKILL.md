@@ -1,9 +1,9 @@
 ---
 name: story-normalization
-description: Normalize a source story into the repository's canonical evaluation-unit artifact while preserving story meaning, original ordering, and dialogue-turn structure. Use when Codex must create, refine, or validate normalized story units for semantic evaluation rather than perform segmentation or prompt optimization.
+description: Normalize a source story into the repository's canonical units artifact while preserving story meaning, original ordering, and dialogue-turn structure. Use when Codex must create, refine, or validate units for semantic evaluation rather than perform segmentation or prompt optimization.
 ---
 
-Use this skill to create or revise the normalization layer used for semantic evaluation.
+Use this skill to create or revise the units artifact used for semantic evaluation.
 
 This skill defines the semantic work of normalization:
 
@@ -21,8 +21,8 @@ Workflow
 --------
 
 1. Read the full story carefully.
-2. Locate the current story workspace and inspect any existing normalization artifact.
-3. Determine whether the current normalized state should be created, kept, or revised.
+2. Locate the current story workspace and inspect any existing units artifact.
+3. Determine whether the current units state should be created, kept, or revised.
 4. Split narration into ordered local units using the repository standard.
 5. Normalize dialogue so that equivalent stories yield equivalent dialogue-turn units even when formatting differs.
 6. Keep narration and dialogue units in source order.
@@ -34,7 +34,7 @@ Workflow
 Normalization Principles
 ------------------------
 
-The normalization should be conservative.
+The units pass should be conservative.
 
 - Do not paraphrase unless the repository standard explicitly requires it.
 - Do not reorder content.
@@ -45,7 +45,7 @@ The normalization should be conservative.
 Dialogue Handling
 -----------------
 
-Dialogue formatting may vary across stories. The normalized result should remain robust to those formatting differences.
+Dialogue formatting may vary across stories. The units result should remain robust to those formatting differences.
 
 Target one dialogue turn per evaluation unit when the repository standard supports that interpretation.
 
@@ -58,16 +58,17 @@ Validation Expectations
 
 Before declaring normalization complete, verify through repository tools and validators that:
 
-- the canonical normalization artifact respects the repository schema,
+- the canonical units artifact respects the repository schema,
 - units are ordered and non-empty,
 - unit labels are unique and stable,
-- the normalized content covers the whole story without major omission,
-- the normalized content does not introduce obvious duplication,
-- the normalized wording remains close to the source story.
+- the units cover the whole story without major omission,
+- the units do not introduce obvious duplication,
+- the unit wording remains close to the source story.
 
 Completion
 ----------
 
-The work is complete only when the normalization is both semantically faithful and structurally validated.
+The work is complete only when the units are both semantically faithful and structurally validated.
 
 If a storage-management skill exists, use it for file placement and naming.
+

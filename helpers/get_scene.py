@@ -16,7 +16,7 @@ if __package__ in {None, ""}:
 from librito.environment import load_repository_environment
 from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook
-from librito.prompt_builder import expand_prompt_anchors
+from librito.prompt_builder import resolve_prompt
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             Inspect one or more scenes from a segmented storybook.
 
             Use this when you already know which scene labels you want to inspect
-            and need the scene text, the raw prompt, or the expanded prompt with
+            and need the scene text, the raw prompt, or the resolved prompt with
             anchors resolved to their descriptions.
             """
         ).strip(),
@@ -56,7 +56,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             Typical use:
               - inspect scene text after segmentation edits
               - inspect raw prompts before illustration generation
-              - inspect expanded prompts after a global anchor check
+              - inspect resolved prompts after a global anchor check
 
             Examples:
               python helpers/get_scene.py --story leo --scenes scene-01 --attributes text
@@ -93,7 +93,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser.add_argument(
         "--expand",
         action="store_true",
-        help="Expand prompt anchors before printing them. Only valid with 'prompt'.",
+        help="Resolve prompt anchors before printing them. Only valid with 'prompt'.",
     )
     return parser.parse_args(argv)
 
@@ -115,7 +115,7 @@ def build_scene_report(
     attributes:
         Attribute names to include for each scene.
     expand_prompts:
-        Whether prompts should be printed with anchors expanded.
+        Whether prompts should be printed with anchors resolved.
 
     Returns
     -------
@@ -137,7 +137,7 @@ def build_scene_report(
         raise SystemExit(f"Unknown scene label(s): {', '.join(missing_labels)}")
 
     requested_attributes = ", ".join(attributes)
-    prompt_mode = "expanded" if expand_prompts else "raw"
+    prompt_mode = "resolved" if expand_prompts else "raw"
     if "prompt" not in attributes:
         prompt_mode = "not requested"
     logger.info(
@@ -171,8 +171,8 @@ def build_scene_report(
 
             prompt = scene.prompt.strip()
             if expand_prompts:
-                prompt = expand_prompt_anchors(prompt, storybook.recurring_concepts).strip()
-                blocks.extend(["", "### Expanded Prompt", "", prompt])
+                prompt = resolve_prompt(prompt, storybook.concepts).strip()
+                blocks.extend(["", "### Resolved Prompt", "", prompt])
             else:
                 blocks.extend(["", "### Prompt", "", prompt])
         sections.append("\n".join(blocks))

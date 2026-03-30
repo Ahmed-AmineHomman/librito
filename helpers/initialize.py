@@ -15,9 +15,9 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from librito.environment import load_repository_environment
-from librito.io import save_normalized_story, save_storybook
+from librito.io import save_storybook, save_units
 from librito.logging import add_logging_arguments, configure_logging
-from librito.models import NormalizedStory, Storybook
+from librito.models import Storybook, Units
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             Behavior:
               - validates that the story name is available
               - copies the provided source file into the canonical story path
-              - writes schema-valid empty storybook and normalized-story files
+              - writes schema-valid empty storybook and units files
               - creates the illustrations directory
 
             Examples:
@@ -120,13 +120,13 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
                 title="",
                 style="",
                 constraints="",
-                recurring_concepts={},
+                concepts={},
                 scenes=[],
             ),
             workspace.storybook_file,
         )
-        save_normalized_story(
-            NormalizedStory(units=[]),
+        save_units(
+            Units(units=[]),
             workspace.units_file,
         )
         workspace.illustrations_dir.mkdir(parents=True, exist_ok=True)
@@ -136,7 +136,7 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
 
     logger.info("Copied source story to %s.", workspace.story_file)
     logger.info("Created empty storybook at %s.", workspace.storybook_file)
-    logger.info("Created empty normalized story at %s.", workspace.units_file)
+    logger.info("Created empty units file at %s.", workspace.units_file)
     logger.info("Created illustrations directory at %s.", workspace.illustrations_dir)
     return workspace
 

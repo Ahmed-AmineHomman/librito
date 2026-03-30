@@ -1,23 +1,23 @@
-"""Prompt-consistency checks and scene expansion helpers for segmentation."""
+"""Prompt-consistency checks and prompt resolution helpers for segmentation."""
 
 from __future__ import annotations
 
 import re
 
 from librito.models import StoryScene, Storybook
-from librito.prompt_builder import build_scene_prompt, expand_prompt_anchors
+from librito.prompt_builder import build_render_prompt, resolve_prompt
 
 _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
 _STRICT_ANCHOR_PATTERN = re.compile(r"^<[A-Z0-9_]+>$")
 
 
 def normalize_anchor_tag(tag: str) -> str:
-    """Normalize a recurring concept tag to the canonical anchor format.
+    """Normalize a concept tag to the canonical anchor format.
 
     Parameters
     ----------
     tag:
-        User-provided recurring concept tag, with or without angle brackets.
+        User-provided concept tag, with or without angle brackets.
 
     Returns
     -------
@@ -52,7 +52,7 @@ def is_valid_anchor_tag(tag: str) -> bool:
     Parameters
     ----------
     tag:
-        Candidate recurring concept tag.
+        Candidate concept tag.
 
     Returns
     -------
@@ -65,7 +65,7 @@ def is_valid_anchor_tag(tag: str) -> bool:
 
 
 def count_concept_occurrences(storybook: Storybook) -> dict[str, dict[str, object]]:
-    """Count recurring concept usage across the storybook.
+    """Count concept usage across the storybook.
 
     Parameters
     ----------
@@ -79,8 +79,8 @@ def count_concept_occurrences(storybook: Storybook) -> dict[str, dict[str, objec
         distinct scenes using it, and the ordered list of those scene labels.
     """
 
-    occurrence_counts: dict[str, int] = {anchor: 0 for anchor in storybook.recurring_concepts}
-    scene_labels: dict[str, list[str]] = {anchor: [] for anchor in storybook.recurring_concepts}
+    occurrence_counts: dict[str, int] = {anchor: 0 for anchor in storybook.concepts}
+    scene_labels: dict[str, list[str]] = {anchor: [] for anchor in storybook.concepts}
 
     for scene in storybook.scenes:
         anchors_in_scene = _ANCHOR_PATTERN.findall(scene.prompt)
@@ -97,7 +97,7 @@ def count_concept_occurrences(storybook: Storybook) -> dict[str, dict[str, objec
             "scene_count": len(scene_labels[anchor]),
             "scene_labels": scene_labels[anchor],
         }
-        for anchor in sorted(storybook.recurring_concepts)
+        for anchor in sorted(storybook.concepts)
     }
 
 
@@ -118,7 +118,7 @@ def check_prompt_consistency(storybook: Storybook) -> dict[str, object]:
     undefined_anchors: list[dict[str, str]] = []
     for scene in storybook.scenes:
         for anchor in sorted(set(_ANCHOR_PATTERN.findall(scene.prompt))):
-            if anchor not in storybook.recurring_concepts:
+            if anchor not in storybook.concepts:
                 undefined_anchors.append(
                     {
                         "scene_label": scene.label,
@@ -149,30 +149,30 @@ def check_prompt_consistency(storybook: Storybook) -> dict[str, object]:
     }
 
 
-def expand_prompt_for_scene(
+def resolve_scene_prompt(
         storybook: Storybook,
         scene: StoryScene,
         *,
-        full: bool = False,
+        render: bool = False,
 ) -> str:
-    """Expand one scene prompt.
+    """Resolve one scene prompt.
 
     Parameters
     ----------
     storybook:
-        Storybook containing the recurring concepts and global prompt context.
+        Storybook containing the concepts and global prompt context.
     scene:
         Scene whose prompt should be expanded.
-    full:
+    render:
         When ``True``, include the style and constraints wrapper used for
         illustration generation.
 
     Returns
     -------
     str
-        Expanded prompt string.
+        Resolved prompt string.
     """
 
-    if full:
-        return build_scene_prompt(storybook, scene)
-    return expand_prompt_anchors(scene.prompt, storybook.recurring_concepts).strip()
+    if render:
+        return build_render_prompt(storybook, scene)
+    return resolve_prompt(scene.prompt, storybook.concepts).strip()

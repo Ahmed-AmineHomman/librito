@@ -1,6 +1,6 @@
 ---
 name: illustration-definition
-description: Define and refine the illustration-facing layer of a storybook, including scene prompts, global style, optional custom constraints, and expanded-prompt consistency. Use when Codex must improve how scenes are expressed for image generation after segmentation has already established the story structure.
+description: Define and refine the illustration-facing layer of a storybook, including scene prompts, global style, optional custom constraints, and resolved prompt consistency. Use when Codex must improve how scenes are expressed for image generation after segmentation has already established the story structure.
 ---
 
 Use this skill to create or revise the illustration-definition layer of a storybook.
@@ -10,7 +10,7 @@ This skill defines the generation-facing work:
 - choosing or refining one global visual style,
 - writing or revising scene prompts,
 - deciding whether custom constraints are needed,
-- checking prompt consistency once anchors are expanded,
+- checking prompt consistency once anchors are resolved,
 - improving prompt clarity for downstream image generation.
 
 Use the repository's authoritative models, prompt-building code, and validators for artifact structure and compliance.
@@ -24,7 +24,7 @@ Workflow
 2. Determine whether the illustration-definition state should be created, kept, or revised.
 3. Define or refine one global visual style that can apply coherently across the whole story.
 4. Rewrite scene prompts so they faithfully express the intent of each scene without changing the segmentation.
-5. Reuse recurring anchors where they improve consistency across scenes.
+5. Reuse anchors where they improve consistency across scenes.
 6. Check the prompts after anchor expansion and revise them until they remain self-contained, visually coherent, and faithful to the scene intent.
 7. Keep custom constraints empty unless the story or the user requires generation rules beyond the repository defaults.
 8. If custom constraints are needed, write only the additional constraints that materially improve generation quality or safety.
@@ -60,21 +60,21 @@ Scene prompts should:
 
 - remain faithful to the associated scene,
 - describe the main visual moment clearly,
-- use recurring anchors when those anchors improve cross-scene consistency,
+- use anchors when they improve cross-scene consistency,
 - stay understandable once anchors are expanded,
 - avoid relying on hidden context outside the storybook artifact.
 
-Expanded-Prompt Consistency
+Resolved-Prompt Consistency
 ---------------------------
 
 Anchor expansion is part of the real generation path.
 
-Therefore, evaluate prompts not only in their compressed form, but also in their expanded form.
+Therefore, evaluate prompts not only in their compressed form, but also in their resolved form.
 
-After expansion, prompts should:
+After resolution, prompts should:
 
 - remain self-contained,
-- preserve visual consistency for recurring concepts,
+- preserve visual consistency for concepts,
 - avoid contradiction between anchor descriptions and inline wording,
 - avoid accidental duplication of the same concept description,
 - remain readable enough for image-generation models.
@@ -89,7 +89,7 @@ Before declaring illustration definition complete, verify through repository too
 - the global style is coherent across the story,
 - custom constraints are used only when needed,
 - all anchors used in prompts are defined,
-- expanded prompts remain consistent and usable for generation.
+- resolved prompts remain consistent and usable for generation.
 
 Completion
 ----------
@@ -97,3 +97,4 @@ Completion
 The work is complete only when the illustration definition is both semantically faithful and structurally validated.
 
 If a storage-management skill exists, use it for file placement and naming.
+

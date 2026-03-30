@@ -24,13 +24,15 @@ For a story labeled `<label>`, the canonical workspace is:
 - `./database/<label>/story.md`
 - `./database/<label>/story.json`
 - `./database/<label>/units.json`
+- `./database/<label>/story.epub`
 - `./database/<label>/illustrations/`
 
 Interpret these paths as follows:
 
 - `story.md`: full source story
 - `story.json`: storybook / segmentation artifact
-- `units.json`: evaluation units
+- `units.json`: units artifact
+- `story.epub`: assembled book
 - `illustrations/`: generated images for the story
 
 Do not invent alternate filenames for these canonical artifacts.
@@ -58,6 +60,7 @@ Treat the naming convention as strict.
 - Do not rename canonical files.
 - Do not store the main storybook JSON under another filename.
 - Do not store evaluation units outside `units.json`.
+- Do not store the main book outside `story.epub`.
 - Do not place story illustrations outside `illustrations/` unless another tool explicitly requires a temporary
   location.
 
@@ -81,3 +84,4 @@ Respect the repository's authoritative schema and artifact definitions for canon
 Use this skill to determine where artifacts must live and how they must be named.
 
 Use the repository's schema definitions and validators to determine what those artifacts must contain.
+

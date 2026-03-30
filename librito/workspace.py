@@ -8,6 +8,7 @@ from pathlib import Path
 DATABASE_ROOT = Path(__file__).resolve().parent.parent / "database"
 STORY_FILE_NAME = "story.md"
 STORYBOOK_FILE_NAME = "story.json"
+BOOK_FILE_NAME = "story.epub"
 UNITS_FILE_NAME = "units.json"
 ILLUSTRATIONS_DIRECTORY_NAME = "illustrations"
 
@@ -26,8 +27,10 @@ class StoryWorkspace:
         Canonical source story file path.
     storybook_file:
         Canonical storybook export path.
+    book_file:
+        Canonical assembled book output path.
     units_file:
-        Canonical normalized-story path.
+        Canonical units path.
     illustrations_dir:
         Canonical illustration output directory.
     """
@@ -36,6 +39,7 @@ class StoryWorkspace:
     directory: Path
     story_file: Path
     storybook_file: Path
+    book_file: Path
     units_file: Path
     illustrations_dir: Path
 
@@ -60,13 +64,14 @@ class StoryWorkspace:
             instead of a story name.
         """
 
-        normalized_story = _validate_story_name(story)
-        directory = DATABASE_ROOT / normalized_story
+        story_name = _validate_story_name(story)
+        directory = DATABASE_ROOT / story_name
         return cls(
-            story=normalized_story,
+            story=story_name,
             directory=directory,
             story_file=directory / STORY_FILE_NAME,
             storybook_file=directory / STORYBOOK_FILE_NAME,
+            book_file=directory / BOOK_FILE_NAME,
             units_file=directory / UNITS_FILE_NAME,
             illustrations_dir=directory / ILLUSTRATIONS_DIRECTORY_NAME,
         )
@@ -104,8 +109,13 @@ class StoryWorkspace:
 
         return _require_file(self.storybook_file)
 
+    def require_book_file(self) -> Path:
+        """Return the canonical book file if it exists."""
+
+        return _require_file(self.book_file)
+
     def require_units_file(self) -> Path:
-        """Return the canonical normalized-story file if it exists."""
+        """Return the canonical units file if it exists."""
 
         return _require_file(self.units_file)
 
@@ -129,16 +139,16 @@ def _validate_story_name(story: str) -> str:
         If the input is empty or looks like a filesystem path.
     """
 
-    normalized_story = story.strip()
-    if not normalized_story:
+    story_name = story.strip()
+    if not story_name:
         raise SystemExit("Story identifier must be a non-empty string.")
-    if normalized_story in {".", ".."}:
+    if story_name in {".", ".."}:
         raise SystemExit(f"Invalid story identifier: {story!r}.")
-    if Path(normalized_story).name != normalized_story:
+    if Path(story_name).name != story_name:
         raise SystemExit(
             f"Expected a story identifier such as 'calmio', not a path like {story!r}."
         )
-    return normalized_story
+    return story_name
 
 
 def _require_file(path: Path) -> Path:

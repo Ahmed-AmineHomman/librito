@@ -11,14 +11,14 @@ _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
 _RESOURCE_DIRECTORY = resources.files("librito.resources")
 
 
-def expand_prompt_anchors(prompt: str, recurring_concepts: dict[str, str]) -> str:
-    """Expand recurring concept anchors into bracketed descriptions.
+def resolve_prompt(prompt: str, concepts: dict[str, str]) -> str:
+    """Resolve concept anchors into bracketed descriptions.
 
     Parameters
     ----------
     prompt:
-        Scene prompt that may contain recurring concept anchors.
-    recurring_concepts:
+        Scene prompt that may contain concept anchors.
+    concepts:
         Mapping from anchor tags to expanded descriptions.
 
     Returns
@@ -34,18 +34,18 @@ def expand_prompt_anchors(prompt: str, recurring_concepts: dict[str, str]) -> st
 
     def replace_anchor(match: re.Match[str]) -> str:
         anchor = match.group(0)
-        if anchor not in recurring_concepts:
-            raise ValueError(f"Undefined recurring concept anchor: {anchor}.")
-        return f"[{recurring_concepts[anchor]}]"
+        if anchor not in concepts:
+            raise ValueError(f"Undefined concept anchor: {anchor}.")
+        return f"[{concepts[anchor]}]"
 
     return _ANCHOR_PATTERN.sub(replace_anchor, prompt)
 
 
-def build_scene_prompt(
+def build_render_prompt(
         storybook: Storybook,
         scene: StoryScene,
 ) -> str:
-    """Build the final image-generation prompt for one scene.
+    """Build the render prompt for one scene.
 
     Parameters
     ----------
@@ -61,7 +61,7 @@ def build_scene_prompt(
         Final prompt to send to the image generation API.
     """
 
-    expanded_prompt = expand_prompt_anchors(scene.prompt, storybook.recurring_concepts).strip()
+    resolved_prompt = resolve_prompt(scene.prompt, storybook.concepts).strip()
     template = _RESOURCE_DIRECTORY.joinpath("image_prompt_template.txt").read_text(encoding="utf-8")
     if storybook.constraints:
         constraints = storybook.constraints.strip()
@@ -69,6 +69,6 @@ def build_scene_prompt(
         constraints = _RESOURCE_DIRECTORY.joinpath("prompt_constraints.txt").read_text(encoding="utf-8").strip()
     return template.format(
         style=storybook.style.strip(),
-        scene_prompt=expanded_prompt,
+        scene_prompt=resolved_prompt,
         constraints=constraints,
     ).strip()

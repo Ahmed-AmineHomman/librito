@@ -1,4 +1,4 @@
-"""Storybook and normalization data models."""
+"""Story, storybook, and units data models."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ class StoryScene:
     text:
         Reader-facing scene text.
     prompt:
-        Illustration prompt using English and optional recurring concept tags.
+        Illustration prompt using English and optional concept tags.
     image_path:
         Relative path to the generated image within the story directory.
     """
@@ -40,7 +40,7 @@ class Storybook:
     constraints:
         Optional generation constraints.  When empty, the default constraints
         shipped in ``librito/resources/prompt_constraints.txt`` are used.
-    recurring_concepts:
+    concepts:
         Mapping from anchor tags such as ``<CALMIO>`` to their expanded
         descriptions.
     scenes:
@@ -49,24 +49,24 @@ class Storybook:
 
     title: str
     style: str
-    recurring_concepts: dict[str, str]
+    concepts: dict[str, str]
     scenes: list[StoryScene]
     constraints: str = field(default="")
 
 
 @dataclass(slots=True)
-class StoryUnit:
-    """Single normalized story unit.
+class Unit:
+    """Single unit from the units artifact.
 
     Parameters
     ----------
     label:
-        Stable unique identifier for the unit within the normalized story.
+        Stable unique identifier for the unit within the units artifact.
     type:
         Canonical unit type, for example ``"narration"`` or
         ``"dialogue_turn"``.
     text:
-        Normalized unit text kept as close as possible to the source story.
+        Unit text kept as close as possible to the source story.
     """
 
     label: str
@@ -75,13 +75,13 @@ class StoryUnit:
 
 
 @dataclass(slots=True)
-class NormalizedStory:
-    """Normalized story ready for semantic evaluation.
+class Units:
+    """Units artifact used for semantic evaluation.
 
     Parameters
     ----------
     units:
-        Ordered normalized units extracted from the source story.
+        Ordered units extracted from the story.
     """
 
-    units: list[StoryUnit]
+    units: list[Unit]

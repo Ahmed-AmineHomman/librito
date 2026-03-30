@@ -33,7 +33,7 @@ What the Command Does
 3. Iterates over scenes in array order.
 4. For each scene without an existing illustration:
 
-   a. Builds the final prompt (see `Prompt Construction`_ below).
+   a. Builds the render prompt (see `Prompt Construction`_ below).
    b. Sends the prompt to the configured image generation model.
    c. Saves the returned image as ``scene-001.png``, ``scene-002.png``, etc.,
       based on the current scene order.
@@ -51,11 +51,11 @@ Use ``--force`` to ignore existing images and regenerate every scene in order.
 Prompt Construction
 -------------------
 
-The generation process builds the final prompt in three layers:
+The generation process builds the render prompt in three layers:
 
 1. **Style** — the global style from ``style``.
-2. **Scene prompt** — the scene's ``prompt`` field after anchor expansion
-   (recurring concept tags are replaced by their bracketed descriptions).
+2. **Resolved prompt** — the scene's ``prompt`` field after anchor resolution
+   (concept tags are replaced by their bracketed descriptions).
 3. **Constraints** — when the storybook's ``constraints`` field is non-empty, its
    value is used. Otherwise the default constraints from the packaged resource
    file ``librito/resources/prompt_constraints.txt`` are applied.
@@ -89,7 +89,7 @@ Take the first Leo scene prompt:
 
    <LEO> kneels on the floor of the <LIVING_ROOM>, smiling with relief as he pulls his <TOY_CAR> from under the sofa.
 
-Before sending it to the image generation model, each anchor is replaced by its
+Before sending it to the image generation model, each anchor is resolved to its
 description in brackets:
 
 .. code-block:: text
@@ -102,7 +102,7 @@ descriptions instead of abstract tag names.
 Full Prompt Example
 ~~~~~~~~~~~~~~~~~~~
 
-For the same scene, the fully assembled prompt is:
+For the same scene, the render prompt is:
 
 .. code-block:: text
 
@@ -201,3 +201,4 @@ The current implementation does not provide:
 For debugging purposes, the generation script can be run with
 ``--provider mock --model mock`` to produce pixel-noise images without calling
 a real API.
+
