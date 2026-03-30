@@ -23,13 +23,14 @@ What the Command Does
 ---------------------
 
 1. Loads and validates ``database/<story>/story.json``.
-2. Checks that the storybook has a non-empty title and at least one scene.
-3. Verifies that every scene has non-empty reader text.
-4. Verifies that every scene has an ``image_path`` pointing to an existing,
+2. Matches the page geometry to the requested ``--aspect-ratio``.
+3. Checks that the storybook has a non-empty title and at least one scene.
+4. Verifies that every scene has non-empty reader text.
+5. Verifies that every scene has an ``image_path`` pointing to an existing,
    readable illustration file.
-5. Renders a text-only cover page.
-6. Renders one text page and one illustration page for every scene.
-7. Packages the result into ``database/<story>/story.epub``.
+6. Renders a text-only cover page.
+7. Renders one text page and one illustration page for every scene.
+8. Packages the result into ``database/<story>/story.epub``.
 
 Layout Rules
 ------------
@@ -57,5 +58,11 @@ The text-page and cover background color can be changed from the command line:
 .. code-block:: bash
 
    python helpers/assemble_book.py --story sir_turnip --background-color "#f4efe6"
+
+Use ``--aspect-ratio`` to match the page shape to the illustration workflow:
+
+.. code-block:: bash
+
+   python helpers/assemble_book.py --story sir_turnip --aspect-ratio 3:4
 
 The default text color can also be overridden with ``--text-color``.

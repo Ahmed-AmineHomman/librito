@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 PAGE_WIDTH = 1600
 PAGE_HEIGHT = 2560
+BASE_PAGE_AREA = PAGE_WIDTH * PAGE_HEIGHT
 TEXT_MARGIN_X = 170
 TEXT_MARGIN_Y = 220
 BODY_FONT_SIZE = 58
@@ -69,6 +70,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
             Behavior:
               - reads ``database/<story>/story.json``
               - validates the title, scene texts, and generated illustrations
+              - matches the page geometry to the requested aspect ratio
               - renders a text-only cover plus one text page and one image page per scene
               - writes the final EPUB to ``database/<story>/story.epub``
 
@@ -80,6 +82,7 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
 
             Examples:
               python helpers/assemble_book.py --story sir_turnip
+              python helpers/assemble_book.py --story sir_turnip --aspect-ratio 3:4
               python helpers/assemble_book.py --story sir_turnip --background-color "#f4efe6"
             """
         ).strip(),
@@ -91,6 +94,11 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
         required=True,
         type=str,
         help="Story folder name under ./database/<story>/.",
+    )
+    parser.add_argument(
+        "--aspect-ratio",
+        default="1:1",
+        help="Requested image aspect ratio.",
     )
     parser.add_argument(
         "--background-color",
@@ -123,10 +131,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = load_parameters(argv)
     configure_logging(arguments.log_level)
     workspace = StoryWorkspace.from_story(arguments.story)
+    configure_page_size(arguments.aspect_ratio)
     background_color = ImageColor.getrgb(arguments.background_color)
     text_color = ImageColor.getrgb(arguments.text_color)
 
     logger.info("Starting assembly pipeline for story '%s'.", workspace.story)
+    logger.info(
+        "Using page size %dx%d for aspect ratio %s.",
+        PAGE_WIDTH,
+        PAGE_HEIGHT,
+        arguments.aspect_ratio,
+    )
     story_path = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", story_path)
     storybook = load_storybook(story_path)
@@ -255,6 +270,43 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.info("Wrote book to %s.", output_path)
     logger.info("Done.")
     return 0
+
+
+def configure_page_size(aspect_ratio: str) -> None:
+    """Configure the single-page size from a ``width:height`` ratio string.
+
+    Parameters
+    ----------
+    aspect_ratio:
+        Aspect ratio string such as ``"1:1"`` or ``"3:4"``.
+
+    Raises
+    ------
+    SystemExit
+        If the aspect ratio is malformed or non-positive.
+    """
+
+    width_text, separator, height_text = aspect_ratio.partition(":")
+    if separator != ":":
+        raise SystemExit(
+            f"Invalid aspect ratio {aspect_ratio!r}. Expected a value like '1:1' or '3:4'."
+        )
+
+    try:
+        width_ratio = float(width_text)
+        height_ratio = float(height_text)
+    except ValueError as error:
+        raise SystemExit(
+            f"Invalid aspect ratio {aspect_ratio!r}. Expected numeric values like '1:1' or '3:4'."
+        ) from error
+
+    if width_ratio <= 0 or height_ratio <= 0:
+        raise SystemExit(f"Aspect ratio values must be positive, got {aspect_ratio!r}.")
+
+    ratio = width_ratio / height_ratio
+    global PAGE_WIDTH, PAGE_HEIGHT
+    PAGE_WIDTH = round((BASE_PAGE_AREA * ratio) ** 0.5)
+    PAGE_HEIGHT = round((BASE_PAGE_AREA / ratio) ** 0.5)
 
 
 def validate_storybook(storybook: Storybook, workspace: StoryWorkspace) -> None:
