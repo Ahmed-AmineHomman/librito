@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import logging
 from librito.embedding_clients import EmbeddingClient
-from librito.embedding_clients.gemini import GeminiEmbeddingClient
-from librito.embedding_clients.lms import LMStudioEmbeddingClient
-from librito.embedding_clients.mock import MockEmbeddingClient
 from librito.image_clients import ImageClient
-from librito.image_clients.comfyui import ComfyUIImageClient
-from librito.image_clients.gemini import GeminiImageClient
-from librito.image_clients.mock import MockImageClient, MockImageClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +43,8 @@ def build_image_client(
     """
 
     if provider == "mock":
+        from librito.image_clients.mock import MockImageClient, MockImageClientConfig
+
         logger.info("Using mock image client.")
         return MockImageClient(MockImageClientConfig(
             aspect_ratio=aspect_ratio,
@@ -56,6 +52,8 @@ def build_image_client(
         ))
 
     if provider == "comfyui":
+        from librito.image_clients.comfyui import ComfyUIImageClient
+
         logger.info("Using ComfyUI image provider.")
         return ComfyUIImageClient(
             checkpoint=model,
@@ -64,6 +62,8 @@ def build_image_client(
         )
 
     if provider == "gemini":
+        from librito.image_clients.gemini import GeminiImageClient
+
         logger.info("Using Gemini image provider.")
         return GeminiImageClient(
             model=model,
@@ -100,14 +100,20 @@ def build_embedding_client(
     """
 
     if provider == "gemini":
+        from librito.embedding_clients.gemini import GeminiEmbeddingClient
+
         logger.info("Using Gemini embedding provider.")
         return GeminiEmbeddingClient(model=model)
 
     if provider == "lms":
+        from librito.embedding_clients.lms import LMStudioEmbeddingClient
+
         logger.info("Using LM Studio embedding provider.")
         return LMStudioEmbeddingClient(model=model)
 
     if provider == "mock":
+        from librito.embedding_clients.mock import MockEmbeddingClient
+
         logger.info("Using mock embedding provider.")
         return MockEmbeddingClient(model=model)
 
