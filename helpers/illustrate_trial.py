@@ -222,7 +222,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         style_override=arguments.style,
         constraints_override=arguments.constraints,
     )
-    resolved_prompt = resolve_prompt(prompt_text, effective_storybook.concepts).strip()
+    resolved_prompt = resolve_prompt(prompt_text, effective_storybook.concept_map).strip()
     render_prompt = build_render_prompt_from_text(effective_storybook, prompt_text)
 
     output_directory = workspace.directory / TRIALS_DIRECTORY_NAME

@@ -171,7 +171,7 @@ def build_scene_report(
 
             prompt = scene.prompt.strip()
             if expand_prompts:
-                prompt = resolve_prompt(prompt, storybook.concepts).strip()
+                prompt = resolve_prompt(prompt, storybook.concept_map).strip()
                 blocks.extend(["", "### Resolved Prompt", "", prompt])
             else:
                 blocks.extend(["", "### Prompt", "", prompt])

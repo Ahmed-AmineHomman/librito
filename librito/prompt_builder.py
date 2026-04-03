@@ -81,7 +81,7 @@ def build_render_prompt_from_text(storybook: Storybook, prompt: str) -> str:
         Final prompt to send to the image generation API.
     """
 
-    resolved_prompt = resolve_prompt(prompt, storybook.concepts).strip()
+    resolved_prompt = resolve_prompt(prompt, storybook.concept_map).strip()
     template = _RESOURCE_DIRECTORY.joinpath("image_prompt_template.txt").read_text(encoding="utf-8")
     if storybook.constraints:
         constraints = storybook.constraints.strip()

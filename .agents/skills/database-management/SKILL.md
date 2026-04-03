@@ -26,6 +26,7 @@ For a story labeled `<label>`, the canonical workspace is:
 - `./database/<label>/units.json`
 - `./database/<label>/story.epub`
 - `./database/<label>/illustrations/`
+- `./database/<label>/artworks/`
 
 Interpret these paths as follows:
 
@@ -33,7 +34,8 @@ Interpret these paths as follows:
 - `story.json`: storybook / segmentation artifact
 - `units.json`: units artifact
 - `story.epub`: assembled book
-- `illustrations/`: generated images for the story
+- `illustrations/`: generated scene and book-part illustrations
+- `artworks/`: concept reference artworks and style reference artwork
 
 Do not invent alternate filenames for these canonical artifacts.
 
@@ -52,6 +54,7 @@ When initializing a new story workspace:
 2. Create `./database/<label>/`.
 3. Create or place the relevant canonical files there.
 4. Create `./database/<label>/illustrations/` when illustration outputs are expected or required by the workflow.
+5. Create `./database/<label>/artworks/` when artwork outputs are expected or required by the workflow.
 
 ## Naming Discipline
 
@@ -62,6 +65,8 @@ Treat the naming convention as strict.
 - Do not store evaluation units outside `units.json`.
 - Do not store the main book outside `story.epub`.
 - Do not place story illustrations outside `illustrations/` unless another tool explicitly requires a temporary
+  location.
+- Do not place concept or style artworks outside `artworks/` unless another tool explicitly requires a temporary
   location.
 
 Additional files may exist in the story folder, but they must not replace or shadow the canonical artifacts.

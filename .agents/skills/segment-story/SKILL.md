@@ -1,19 +1,24 @@
 ---
 name: segment-story
-description: Segment a source story into the repository's canonical storybook artifact by choosing visually meaningful scenes, preserving narrative flow, and defining consistent anchors. Use when Codex must create, refine, or validate the story structure for an illustrated book inside the workspace; use a separate skill for detailed prompt, style, or constraint work.
+description: Segment a source story into ordered scenes by choosing visually meaningful moments, preserving narrative flow, and writing scene texts. Use when Codex must create, refine, or validate the scene breakdown for an illustrated book; use separate skills for concept definition, prompt design, and illustration work.
 ---
 
-Use this skill to create or revise the segmentation layer of a storybook for illustrated-book generation.
+Use this skill to create or revise the scene breakdown of a storybook.
 
-This skill defines the semantic work of segmentation:
+This skill defines the structural work of segmentation:
 
 - defining the canonical title and author,
 - choosing the scene breakdown,
-- preserving story coverage,
-- preserving the story flow,
-- defining visual anchors,
+- preserving story coverage and narrative flow,
 - writing scene texts,
+- determining which non-scene book parts should be present,
 - ensuring each scene corresponds to a clear illustratable moment.
+
+This skill does **not** handle:
+
+- concept identification or anchor definition (use the concept-definition skill),
+- prompt writing for scenes or book parts (use the prompt-design skill),
+- style, constraints, or illustration generation (use artwork-generation and illustration-generation skills).
 
 Use the repository's authoritative schema, storage rules, and validators for artifact structure and compliance.
 
@@ -27,28 +32,12 @@ Workflow
 3. Determine whether the current segmentation should be created, kept, or revised.
 4. Define or refine the canonical title and author for the book.
 5. Determine which non-scene book parts should be present in the current storybook draft.
-6. Identify visual concepts in the story:
-   * characters,
-   * important settings,
-   * important recurring objects.
-7. Split the story into scenes while preserving narrative flow, story coverage, and visual clarity.
-8. Ensure that each scene captures a distinct and illustratable moment.
-9. Write each scene text in the language of the story.
-10. Define concept anchors only for concepts that appear in more than one scene.
-11. If the canonical artifact includes prompt fields outside scenes, keep them structurally aligned with the intended book part, but leave detailed prompt optimization to a dedicated prompting skill.
-12. Run the relevant repository validators and consistency checks.
-13. Repair weak or invalid segmentation state before declaring the work complete.
-
-Anchor Definition
------------------
-
-Concepts are stored as anchor mappings from canonical tags to stable visual descriptions.
-
-Anchor tags must use the strict format ``<NAME>`` with uppercase letters,
-digits, and underscores only.
-
-Prompts should use anchors whenever a story concept appears in more than one
-scene. One-scene details should stay inline.
+6. Split the story into scenes while preserving narrative flow, story coverage, and visual clarity.
+7. Ensure that each scene captures a distinct and illustratable moment.
+8. Write each scene text in the language of the story.
+9. Leave prompt and image_path fields empty for scenes; those are filled by downstream skills.
+10. Run the relevant repository validators and consistency checks.
+11. Repair weak or invalid segmentation state before declaring the work complete.
 
 Scene Texts
 -----------
@@ -60,17 +49,14 @@ Scene texts should:
 * remain close to the original writing when possible,
 * stay in the original story language.
 
-Scene Prompts
--------------
+Scene Labels
+------------
 
-Scene prompts should:
+Scene labels should:
 
-* remain faithful to the scene intent,
-* preserve anchor usage when anchors are relevant,
-* stay usable for downstream illustration work,
-* are written in english.
-
-Prompt wording refinement, style definition, and constraint tuning belong to a separate prompting or illustration-preparation skill.
+* be unique across the storybook,
+* follow a stable naming convention,
+* remain meaningful enough to identify the scene outside the storybook context.
 
 Output Validation Rules
 -----------------------
@@ -80,14 +66,10 @@ Before declaring the segmentation complete, verify through repository tools and 
 * the canonical segmentation artifact respects the repository schema,
 * scene labels are unique and stable,
 * scene texts are written in the story language,
-* scene prompts are written in english,
 * scene order preserves the narrative flow,
 * the story is covered without major omissions,
 * scenes are distinct enough to avoid obvious redundancy,
-* all anchors used in prompts are defined,
-* unused concepts are removed,
-* anchors used in only one scene are removed or inlined,
-* the resulting segmentation is suitable for downstream illustration generation.
+* the resulting segmentation is suitable for downstream concept and illustration work.
 
 Completion
 ----------

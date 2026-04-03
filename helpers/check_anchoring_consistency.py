@@ -131,7 +131,7 @@ def build_anchor_report(
     input_json = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", input_json)
     storybook = load_storybook(input_json)
-    defined_anchors = sorted(storybook.concepts)
+    defined_anchors = sorted(storybook.concept_tags)
     report = check_prompt_consistency(storybook)
     undefined_anchor_names = sorted(
         {
@@ -150,7 +150,7 @@ def build_anchor_report(
     selectable_anchors = defined_anchors + [
         anchor
         for anchor in undefined_anchor_names
-        if anchor not in storybook.concepts
+        if anchor not in storybook.concept_map
     ]
     detailed_anchors = _resolve_anchor_names(
         available_anchors=selectable_anchors,
@@ -204,7 +204,7 @@ def build_anchor_report(
             ]
         )
         for anchor in detailed_anchors:
-            kind = "defined" if anchor in storybook.concepts else "undefined"
+            kind = "defined" if anchor in storybook.concept_map else "undefined"
             usage_status = _determine_anchor_status(
                 anchor=anchor,
                 is_defined=kind == "defined",

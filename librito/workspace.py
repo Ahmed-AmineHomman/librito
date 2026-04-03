@@ -11,6 +11,7 @@ STORYBOOK_FILE_NAME = "story.json"
 BOOK_FILE_NAME = "story.epub"
 UNITS_FILE_NAME = "units.json"
 ILLUSTRATIONS_DIRECTORY_NAME = "illustrations"
+ARTWORKS_DIRECTORY_NAME = "artworks"
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +34,8 @@ class StoryWorkspace:
         Canonical units path.
     illustrations_dir:
         Canonical illustration output directory.
+    artworks_dir:
+        Canonical artwork output directory for concept and style references.
     """
 
     story: str
@@ -42,6 +45,7 @@ class StoryWorkspace:
     book_file: Path
     units_file: Path
     illustrations_dir: Path
+    artworks_dir: Path
 
     @classmethod
     def from_story(cls, story: str) -> StoryWorkspace:
@@ -74,6 +78,7 @@ class StoryWorkspace:
             book_file=directory / BOOK_FILE_NAME,
             units_file=directory / UNITS_FILE_NAME,
             illustrations_dir=directory / ILLUSTRATIONS_DIRECTORY_NAME,
+            artworks_dir=directory / ARTWORKS_DIRECTORY_NAME,
         )
 
     def ensure_directory(self) -> None:

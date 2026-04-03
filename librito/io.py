@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from librito.models import BookParts, IllustrationSpec, PageSpec, StoryScene, Storybook, Unit, Units
+from librito.models import BookParts, Concept, IllustrationSpec, PageSpec, StoryScene, Storybook, Unit, Units
 
-_STORYBOOK_TOP_LEVEL_KEYS = {"title", "author", "style", "constraints", "concepts", "parts", "scenes"}
+_STORYBOOK_TOP_LEVEL_KEYS = {"title", "author", "style", "style_image_path", "constraints", "concepts", "parts", "scenes"}
 _STORYBOOK_PART_KEYS = {
     "front_cover",
     "front_endpaper",
@@ -20,6 +20,7 @@ _STORYBOOK_PART_KEYS = {
     "back_cover",
 }
 _STORYBOOK_SCENE_KEYS = {"label", "text", "prompt", "image_path"}
+_CONCEPT_KEYS = {"tag", "description", "image_path", "scenes"}
 _PAGE_KEYS = {"text", "illustration"}
 _ILLUSTRATION_KEYS = {"prompt", "image_path", "text_mode"}
 _UNITS_TOP_LEVEL_KEYS = {"units"}
@@ -51,12 +52,33 @@ def load_storybook(path: Path) -> Storybook:
     _require_exact_keys(payload, _STORYBOOK_TOP_LEVEL_KEYS, "story")
 
     concepts = payload["concepts"]
-    if not isinstance(concepts, dict):
-        raise ValueError("story.concepts must be an object.")
+    if not isinstance(concepts, list):
+        raise ValueError("story.concepts must be an array.")
 
-    parsed_concepts: dict[str, str] = {}
-    for key, value in concepts.items():
-        parsed_concepts[str(key)] = _require_string(value, f"concepts.{key}")
+    parsed_concepts: list[Concept] = []
+    seen_tags: set[str] = set()
+    for position, concept_payload in enumerate(concepts, start=1):
+        if not isinstance(concept_payload, dict):
+            raise ValueError(f"concept {position} must be an object.")
+        _require_exact_keys(concept_payload, _CONCEPT_KEYS, f"concept {position}")
+        concept_tag = _require_non_empty_trimmed_string(concept_payload["tag"], f"concept {position}.tag")
+        if concept_tag in seen_tags:
+            raise ValueError(f"concept tags must be unique, duplicate found: {concept_tag}.")
+        seen_tags.add(concept_tag)
+        concept_scenes = concept_payload["scenes"]
+        if not isinstance(concept_scenes, list):
+            raise ValueError(f"concept {position}.scenes must be an array.")
+        parsed_concepts.append(
+            Concept(
+                tag=concept_tag,
+                description=_require_string(concept_payload["description"], f"concept {position}.description"),
+                image_path=_require_string(concept_payload["image_path"], f"concept {position}.image_path"),
+                scenes=[
+                    _require_string(scene_label, f"concept {position}.scenes[{index}]")
+                    for index, scene_label in enumerate(concept_scenes)
+                ],
+            )
+        )
 
     scenes_payload = payload["scenes"]
     if not isinstance(scenes_payload, list):
@@ -85,6 +107,7 @@ def load_storybook(path: Path) -> Storybook:
         title=_require_string(payload["title"], "story.title"),
         author=_require_string(payload["author"], "story.author"),
         style=_require_string(payload["style"], "story.style"),
+        style_image_path=_require_string(payload["style_image_path"], "story.style_image_path"),
         constraints=_require_string(payload["constraints"], "story.constraints"),
         concepts=parsed_concepts,
         parts=_parse_book_parts(payload["parts"]),
@@ -108,8 +131,17 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
             "title": storybook.title,
             "author": storybook.author,
             "style": storybook.style,
+            "style_image_path": storybook.style_image_path,
             "constraints": storybook.constraints,
-            "concepts": storybook.concepts,
+            "concepts": [
+                {
+                    "tag": concept.tag,
+                    "description": concept.description,
+                    "image_path": concept.image_path,
+                    "scenes": list(concept.scenes),
+                }
+                for concept in storybook.concepts
+            ],
             "parts": _serialize_book_parts(storybook.parts),
             "scenes": [
                 {

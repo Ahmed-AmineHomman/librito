@@ -79,8 +79,8 @@ def count_concept_occurrences(storybook: Storybook) -> dict[str, dict[str, objec
         distinct scenes using it, and the ordered list of those scene labels.
     """
 
-    occurrence_counts: dict[str, int] = {anchor: 0 for anchor in storybook.concepts}
-    scene_labels: dict[str, list[str]] = {anchor: [] for anchor in storybook.concepts}
+    occurrence_counts: dict[str, int] = {anchor: 0 for anchor in storybook.concept_tags}
+    scene_labels: dict[str, list[str]] = {anchor: [] for anchor in storybook.concept_tags}
 
     for scene in storybook.scenes:
         anchors_in_scene = _ANCHOR_PATTERN.findall(scene.prompt)
@@ -97,7 +97,7 @@ def count_concept_occurrences(storybook: Storybook) -> dict[str, dict[str, objec
             "scene_count": len(scene_labels[anchor]),
             "scene_labels": scene_labels[anchor],
         }
-        for anchor in sorted(storybook.concepts)
+        for anchor in sorted(storybook.concept_tags)
     }
 
 
@@ -118,7 +118,7 @@ def check_prompt_consistency(storybook: Storybook) -> dict[str, object]:
     undefined_anchors: list[dict[str, str]] = []
     for scene in storybook.scenes:
         for anchor in sorted(set(_ANCHOR_PATTERN.findall(scene.prompt))):
-            if anchor not in storybook.concepts:
+            if anchor not in storybook.concept_map:
                 undefined_anchors.append(
                     {
                         "scene_label": scene.label,
@@ -175,4 +175,4 @@ def resolve_scene_prompt(
 
     if render:
         return build_render_prompt(storybook, scene)
-    return resolve_prompt(scene.prompt, storybook.concepts).strip()
+    return resolve_prompt(scene.prompt, storybook.concept_map).strip()

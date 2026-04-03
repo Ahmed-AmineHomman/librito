@@ -121,7 +121,7 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
                 author="",
                 style="",
                 constraints="",
-                concepts={},
+                concepts=[],
                 parts=BookParts(
                     front_cover=PageSpec(
                         illustration=IllustrationSpec(
@@ -142,6 +142,7 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
             workspace.units_file,
         )
         workspace.illustrations_dir.mkdir(parents=True, exist_ok=True)
+        workspace.artworks_dir.mkdir(parents=True, exist_ok=True)
     except Exception:
         shutil.rmtree(workspace.directory, ignore_errors=True)
         raise
@@ -150,6 +151,7 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
     logger.info("Created empty storybook at %s.", workspace.storybook_file)
     logger.info("Created empty units file at %s.", workspace.units_file)
     logger.info("Created illustrations directory at %s.", workspace.illustrations_dir)
+    logger.info("Created artworks directory at %s.", workspace.artworks_dir)
     return workspace
 
 

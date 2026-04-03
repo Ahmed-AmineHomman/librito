@@ -21,9 +21,32 @@ class IllustrationSpec:
         is not relevant for the page.
     """
 
-    prompt: str
-    image_path: str
+    prompt: str = ""
+    image_path: str = ""
     text_mode: str | None = field(default=None)
+
+
+@dataclass(slots=True)
+class Concept:
+    """A recurring visual concept tracked across scenes.
+
+    Parameters
+    ----------
+    tag:
+        Canonical anchor tag in ``<UPPER_SNAKE>`` format.
+    description:
+        Stable visual description of the concept.
+    image_path:
+        Relative path to the concept's reference artwork within the story
+        directory. Empty until the artwork-generation stage fills it.
+    scenes:
+        Ordered scene labels where this concept visually appears.
+    """
+
+    tag: str
+    description: str
+    image_path: str = ""
+    scenes: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -88,14 +111,16 @@ class StoryScene:
         Reader-facing scene text.
     prompt:
         Illustration prompt using English and optional concept tags.
+        Empty until the prompt-design stage fills it.
     image_path:
         Relative path to the generated image within the story directory.
+        Empty until the illustration-generation stage fills it.
     """
 
     label: str
     text: str
-    prompt: str
-    image_path: str
+    prompt: str = ""
+    image_path: str = ""
 
 
 @dataclass(slots=True)
@@ -114,21 +139,49 @@ class Storybook:
         Optional generation constraints. When empty, the default constraints
         shipped in ``librito/resources/prompt_constraints.txt`` are used.
     concepts:
-        Mapping from anchor tags such as ``<CALMIO>`` to their expanded
-        descriptions.
+        Ordered list of recurring visual concepts with tags, descriptions,
+        reference artwork paths, and scene mappings.
     parts:
         Structured non-scene book parts such as covers and front matter.
     scenes:
         Ordered story scenes to illustrate.
+    style_image_path:
+        Relative path to the style reference artwork within the story
+        directory. Empty until the artwork-generation stage fills it.
     """
 
     title: str
     author: str
     style: str
-    concepts: dict[str, str]
+    concepts: list[Concept]
     parts: BookParts
     scenes: list[StoryScene]
     constraints: str = field(default="")
+    style_image_path: str = field(default="")
+
+    @property
+    def concept_map(self) -> dict[str, str]:
+        """Mapping from concept anchor tags to their text descriptions.
+
+        Returns
+        -------
+        dict[str, str]
+            Tag-to-description mapping for anchor resolution.
+        """
+
+        return {c.tag: c.description for c in self.concepts}
+
+    @property
+    def concept_tags(self) -> list[str]:
+        """Ordered list of concept anchor tags.
+
+        Returns
+        -------
+        list[str]
+            Tags in concept order.
+        """
+
+        return [c.tag for c in self.concepts]
 
 
 @dataclass(slots=True)
