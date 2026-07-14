@@ -42,6 +42,25 @@ AUTHOR_FONT_SIZE = 68
 AUTHOR_LINE_SPACING = 18
 DEFAULT_BACKGROUND_COLOR = "#f6f1e8"
 DEFAULT_TEXT_COLOR = "#1d1a17"
+SCALE_FACTOR = 1.0
+
+
+def scale(
+    value: float,
+) -> int:
+    """Scale a pixel measurement by the current scale factor.
+
+    Parameters
+    ----------
+    value:
+        Pixel value to scale.
+
+    Returns
+    -------
+    int
+        Scaled pixel value.
+    """
+    return int(value * SCALE_FACTOR)
 
 
 @dataclass(slots=True)
@@ -142,6 +161,11 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
         default=DEFAULT_TEXT_COLOR,
         help=f"Text color for rendered text overlays and text pages (default: {DEFAULT_TEXT_COLOR}).",
     )
+    parser.add_argument(
+        "--resolution",
+        choices=["512", "1k", "2k", "1K", "2K"],
+        help="Resolution preset for the generated EPUB images (choices: '512', '1k', '2k').",
+    )
     return parser.parse_args(argv)
 
 
@@ -163,7 +187,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = load_parameters(argv)
     configure_logging(arguments.log_level)
     workspace = StoryWorkspace.from_story(arguments.story)
-    configure_page_size(arguments.aspect_ratio)
+    configure_page_size(arguments.aspect_ratio, arguments.resolution)
     background_color = ImageColor.getrgb(arguments.background_color)
     text_color = ImageColor.getrgb(arguments.text_color)
 
@@ -280,13 +304,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def configure_page_size(aspect_ratio: str) -> None:
+def configure_page_size(
+    aspect_ratio: str,
+    resolution: str | None = None,
+) -> None:
     """Configure the single-page size from a ``width:height`` ratio string.
 
     Parameters
     ----------
     aspect_ratio:
         Aspect ratio string such as ``"1:1"`` or ``"3:4"``.
+    resolution:
+        Optional resolution preset string.
 
     Raises
     ------
@@ -312,9 +341,27 @@ def configure_page_size(aspect_ratio: str) -> None:
         raise SystemExit(f"Aspect ratio values must be positive, got {aspect_ratio!r}.")
 
     ratio = width_ratio / height_ratio
-    global PAGE_WIDTH, PAGE_HEIGHT
-    PAGE_WIDTH = round((BASE_PAGE_AREA * ratio) ** 0.5)
-    PAGE_HEIGHT = round((BASE_PAGE_AREA / ratio) ** 0.5)
+    global PAGE_WIDTH, PAGE_HEIGHT, SCALE_FACTOR
+    default_width = round((BASE_PAGE_AREA * ratio) ** 0.5)
+
+    if resolution is not None:
+        res_lower = resolution.lower()
+        if res_lower == "512":
+            target_area = 512 * 512
+        elif res_lower == "1k":
+            target_area = 1024 * 1024
+        elif res_lower == "2k":
+            target_area = 2048 * 2048
+        else:
+            raise SystemExit(f"Invalid resolution value: {resolution!r}")
+
+        PAGE_WIDTH = round((target_area * ratio) ** 0.5)
+        PAGE_HEIGHT = round((target_area / ratio) ** 0.5)
+        SCALE_FACTOR = PAGE_WIDTH / default_width
+    else:
+        PAGE_WIDTH = default_width
+        PAGE_HEIGHT = round((BASE_PAGE_AREA / ratio) ** 0.5)
+        SCALE_FACTOR = 1.0
 
 
 def build_rendered_pages(
@@ -615,7 +662,11 @@ def validate_image_path(workspace: StoryWorkspace, relative_path: str, label: st
         raise SystemExit(f"{label} could not be opened: {image_path}") from error
 
 
-def render_cover_page(title: str, background_color: tuple[int, int, int], text_color: tuple[int, int, int]) -> Image.Image:
+def render_cover_page(
+    title: str,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
+) -> Image.Image:
     """Render the title-only cover page.
 
     Parameters
@@ -640,18 +691,18 @@ def render_cover_page(title: str, background_color: tuple[int, int, int], text_c
 
     page = Image.new("RGB", (PAGE_WIDTH, PAGE_HEIGHT), background_color)
     draw = ImageDraw.Draw(page)
-    available_width = PAGE_WIDTH - (TEXT_MARGIN_X * 2)
-    available_height = PAGE_HEIGHT - (TEXT_MARGIN_Y * 2)
+    available_width = PAGE_WIDTH - (scale(TEXT_MARGIN_X) * 2)
+    available_height = PAGE_HEIGHT - (scale(TEXT_MARGIN_Y) * 2)
 
-    for font_size in (TITLE_FONT_SIZE, 112, 100, 90, 82, 74):
+    for font_size in (scale(TITLE_FONT_SIZE), scale(112), scale(100), scale(90), scale(82), scale(74)):
         font = load_font(font_size, bold=True)
         lines = wrap_text(title, draw, font, available_width)
-        line_height = font.size + TITLE_LINE_SPACING
-        text_height = len(lines) * line_height - TITLE_LINE_SPACING
+        line_height = font.size + scale(TITLE_LINE_SPACING)
+        text_height = len(lines) * line_height - scale(TITLE_LINE_SPACING)
         if text_height > available_height:
             continue
 
-        y = TEXT_MARGIN_Y + ((available_height - text_height) // 2)
+        y = scale(TEXT_MARGIN_Y) + ((available_height - text_height) // 2)
         for line in lines:
             line_bbox = draw.textbbox((0, 0), line, font=font)
             line_width = line_bbox[2] - line_bbox[0]
@@ -681,18 +732,18 @@ def render_front_cover_page(
     panel_top = round(PAGE_HEIGHT * 0.30)
     panel_bottom = round(PAGE_HEIGHT * 0.72)
     draw.rectangle(
-        [(TEXT_MARGIN_X - 30, panel_top), (PAGE_WIDTH - TEXT_MARGIN_X + 30, panel_bottom)],
+        [(scale(TEXT_MARGIN_X) - scale(30), panel_top), (PAGE_WIDTH - scale(TEXT_MARGIN_X) + scale(30), panel_bottom)],
         fill=(255, 255, 255, 170),
     )
 
-    title_box_top = panel_top + 70
+    title_box_top = panel_top + scale(70)
     title_box_height = round((panel_bottom - panel_top) * 0.55)
     draw_centered_text_block(
         draw=draw,
         text=title,
-        box=(TEXT_MARGIN_X, title_box_top, PAGE_WIDTH - TEXT_MARGIN_X, title_box_top + title_box_height),
-        font_sizes=[TITLE_FONT_SIZE, 112, 100, 90, 82, 74],
-        line_spacing=TITLE_LINE_SPACING,
+        box=(scale(TEXT_MARGIN_X), title_box_top, PAGE_WIDTH - scale(TEXT_MARGIN_X), title_box_top + title_box_height),
+        font_sizes=[scale(fs) for fs in (TITLE_FONT_SIZE, 112, 100, 90, 82, 74)],
+        line_spacing=scale(TITLE_LINE_SPACING),
         text_color=text_color,
         bold=True,
         error_message="The story title does not fit on the front cover.",
@@ -700,9 +751,9 @@ def render_front_cover_page(
     draw_centered_text_block(
         draw=draw,
         text=author,
-        box=(TEXT_MARGIN_X, panel_bottom - 230, PAGE_WIDTH - TEXT_MARGIN_X, panel_bottom - 90),
-        font_sizes=[AUTHOR_FONT_SIZE, 62, 56, 50],
-        line_spacing=AUTHOR_LINE_SPACING,
+        box=(scale(TEXT_MARGIN_X), panel_bottom - scale(230), PAGE_WIDTH - scale(TEXT_MARGIN_X), panel_bottom - scale(90)),
+        font_sizes=[scale(fs) for fs in (AUTHOR_FONT_SIZE, 62, 56, 50)],
+        line_spacing=scale(AUTHOR_LINE_SPACING),
         text_color=text_color,
         bold=False,
         error_message="The story author does not fit on the front cover.",
@@ -728,9 +779,9 @@ def render_title_page(
     draw_centered_text_block(
         draw=draw,
         text=title,
-        box=(TEXT_MARGIN_X, title_top, PAGE_WIDTH - TEXT_MARGIN_X, title_bottom),
-        font_sizes=[110, 98, 88, 78, 70],
-        line_spacing=24,
+        box=(scale(TEXT_MARGIN_X), title_top, PAGE_WIDTH - scale(TEXT_MARGIN_X), title_bottom),
+        font_sizes=[scale(fs) for fs in (110, 98, 88, 78, 70)],
+        line_spacing=scale(24),
         text_color=text_color,
         bold=True,
         error_message="The story title does not fit on the title page.",
@@ -738,9 +789,9 @@ def render_title_page(
     draw_centered_text_block(
         draw=draw,
         text=author,
-        box=(TEXT_MARGIN_X, title_bottom + 30, PAGE_WIDTH - TEXT_MARGIN_X, title_bottom + 180),
-        font_sizes=[AUTHOR_FONT_SIZE, 62, 56, 50],
-        line_spacing=AUTHOR_LINE_SPACING,
+        box=(scale(TEXT_MARGIN_X), title_bottom + scale(30), PAGE_WIDTH - scale(TEXT_MARGIN_X), title_bottom + scale(180)),
+        font_sizes=[scale(fs) for fs in (AUTHOR_FONT_SIZE, 62, 56, 50)],
+        line_spacing=scale(AUTHOR_LINE_SPACING),
         text_color=text_color,
         bold=False,
         error_message="The story author does not fit on the title page.",
@@ -776,10 +827,10 @@ def render_text_page(
 
 
 def render_scene_text_page(
-        scene_label: str,
-        text: str,
-        background_color: tuple[int, int, int],
-        text_color: tuple[int, int, int],
+    scene_label: str,
+    text: str,
+    background_color: tuple[int, int, int],
+    text_color: tuple[int, int, int],
 ) -> Image.Image:
     """Render one left-page text panel for a scene.
 
@@ -807,21 +858,21 @@ def render_scene_text_page(
 
     page = Image.new("RGB", (PAGE_WIDTH, PAGE_HEIGHT), background_color)
     draw = ImageDraw.Draw(page)
-    font = load_font(BODY_FONT_SIZE)
-    available_width = PAGE_WIDTH - (TEXT_MARGIN_X * 2)
-    available_height = PAGE_HEIGHT - (TEXT_MARGIN_Y * 2)
+    font = load_font(scale(BODY_FONT_SIZE))
+    available_width = PAGE_WIDTH - (scale(TEXT_MARGIN_X) * 2)
+    available_height = PAGE_HEIGHT - (scale(TEXT_MARGIN_Y) * 2)
     lines = wrap_text(text, draw, font, available_width)
-    line_height = BODY_FONT_SIZE + BODY_LINE_SPACING
-    text_height = len(lines) * line_height - BODY_LINE_SPACING
+    line_height = scale(BODY_FONT_SIZE) + scale(BODY_LINE_SPACING)
+    text_height = len(lines) * line_height - scale(BODY_LINE_SPACING)
     if text_height > available_height:
         raise SystemExit(
             f"Scene {scene_label!r} text does not fit on its single left page."
         )
 
-    y = TEXT_MARGIN_Y + ((available_height - text_height) // 2)
+    y = scale(TEXT_MARGIN_Y) + ((available_height - text_height) // 2)
     for line in lines:
         if line:
-            draw.text((TEXT_MARGIN_X, y), line, fill=text_color, font=font)
+            draw.text((scale(TEXT_MARGIN_X), y), line, fill=text_color, font=font)
         y += line_height
 
     return page
@@ -888,15 +939,15 @@ def overlay_back_cover_text(
     draw = ImageDraw.Draw(canvas, "RGBA")
     panel_top = round(PAGE_HEIGHT * 0.58)
     draw.rectangle(
-        [(TEXT_MARGIN_X - 30, panel_top), (PAGE_WIDTH - TEXT_MARGIN_X + 30, PAGE_HEIGHT - TEXT_MARGIN_Y + 40)],
+        [(scale(TEXT_MARGIN_X) - scale(30), panel_top), (PAGE_WIDTH - scale(TEXT_MARGIN_X) + scale(30), PAGE_HEIGHT - scale(TEXT_MARGIN_Y) + scale(40))],
         fill=(255, 255, 255, 180),
     )
     draw_centered_text_block(
         draw=draw,
         text=teaser,
-        box=(TEXT_MARGIN_X, panel_top + 50, PAGE_WIDTH - TEXT_MARGIN_X, PAGE_HEIGHT - TEXT_MARGIN_Y),
-        font_sizes=[BODY_FONT_SIZE, 54, 50, 46, 42],
-        line_spacing=BODY_LINE_SPACING,
+        box=(scale(TEXT_MARGIN_X), panel_top + scale(50), PAGE_WIDTH - scale(TEXT_MARGIN_X), PAGE_HEIGHT - scale(TEXT_MARGIN_Y)),
+        font_sizes=[scale(fs) for fs in (BODY_FONT_SIZE, 54, 50, 46, 42)],
+        line_spacing=scale(BODY_LINE_SPACING),
         text_color=text_color,
         bold=False,
         error_message="The back-cover teaser does not fit on the illustration overlay.",
@@ -935,9 +986,9 @@ def render_centered_text_page(
     draw_centered_text_block(
         draw=draw,
         text=text,
-        box=(TEXT_MARGIN_X, TEXT_MARGIN_Y, PAGE_WIDTH - TEXT_MARGIN_X, PAGE_HEIGHT - TEXT_MARGIN_Y),
-        font_sizes=[BODY_FONT_SIZE, 54, 50, 46, 42],
-        line_spacing=BODY_LINE_SPACING,
+        box=(scale(TEXT_MARGIN_X), scale(TEXT_MARGIN_Y), PAGE_WIDTH - scale(TEXT_MARGIN_X), PAGE_HEIGHT - scale(TEXT_MARGIN_Y)),
+        font_sizes=[scale(fs) for fs in (BODY_FONT_SIZE, 54, 50, 46, 42)],
+        line_spacing=scale(BODY_LINE_SPACING),
         text_color=text_color,
         bold=False,
         error_message=error_message,
