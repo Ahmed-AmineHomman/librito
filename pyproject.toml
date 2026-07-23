@@ -25,4 +25,4 @@ version = { attr = "librito.__version__" }
 dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.dynamic.optional-dependencies]
-doc = { file = ["requirements_doc.txt"] }
+dev = { file = ["requirements_dev.txt"] }
