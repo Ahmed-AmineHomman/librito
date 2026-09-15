@@ -2,9 +2,9 @@
 
 .. toctree::
     :maxdepth: 2
-    :caption: Contents:
 
-    Story Segmentation <story_segmentation>
-    Illustration Generation <illustration_generation>
-    Assembly Book <assembly_book>
-    Complete Example <complete_example>
+    Démarrage Rapide <getting_started>
+    Le Storybook <storybook>
+    Le Procédé <process>
+    La Base de Données <database>
+    Exemples <examples>
