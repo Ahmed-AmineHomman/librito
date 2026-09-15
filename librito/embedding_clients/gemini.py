@@ -92,19 +92,20 @@ class GeminiEmbeddingClient:
         if not texts:
             return []
 
-        try:
-            response = self._sdk_client.models.embed_content(
-                model=self._model,
-                contents=list(texts),
-            )
-        except Exception as error:
-            raise GeminiEmbeddingClientError(f"Gemini SDK embedding request failed: {error}.") from error
-
-        if not response.embeddings:
-            raise GeminiEmbeddingClientError("Gemini response did not contain embedding payloads.")
-
         vectors: list[list[float]] = []
-        for index, embedding in enumerate(response.embeddings):
+        for index, text in enumerate(texts):
+            try:
+                response = self._sdk_client.models.embed_content(
+                    model=self._model,
+                    contents=text,
+                )
+            except Exception as error:
+                raise GeminiEmbeddingClientError(f"Gemini SDK embedding request failed: {error}.") from error
+
+            if not response.embeddings:
+                raise GeminiEmbeddingClientError("Gemini response did not contain embedding payloads.")
+
+            embedding = response.embeddings[0]
             values = embedding.values
             if values is None:
                 raise GeminiEmbeddingClientError(
@@ -112,9 +113,5 @@ class GeminiEmbeddingClient:
                 )
             vectors.append(list(values))
 
-        if len(vectors) != len(texts):
-            raise GeminiEmbeddingClientError(
-                "Gemini embedding response count did not match the number of requested texts."
-            )
-
         return vectors
+
