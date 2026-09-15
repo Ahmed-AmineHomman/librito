@@ -27,4 +27,4 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 root_doc = "index"
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
