@@ -19,7 +19,14 @@ The code should look into the following environment variables when relevant:
 
 ## CI
 
-This solution has no test suite.
+This solution has no test suite. It has however GitHub Action scripts that run in the following cases:
+
+- when a PR proposes modification to the `main` branch;
+- when committing to the `main` branch.
+
+The CI consists in the following scripts:
+
+- `docs`: builds & publish the documentation.
 
 ## Documentation
 
