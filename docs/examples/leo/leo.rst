@@ -31,7 +31,7 @@ Scènes
 
 Cette histoire se découpe tout naturellement en trois scènes (une scène par paragraphe). Le fichier JSON correspondant est donc le suivant :
 
-.. literalinclude:: examples/leo/story.json
+.. literalinclude:: story.json
    :language: json
 
 Livre
@@ -52,7 +52,7 @@ Scène 1
 **Prompt d'illustration :**
    ``<LEO> kneels on the floor of the <LIVING_ROOM>, after searching everywhere, smiling with relief as he pulls his <TOY_CAR> from under the sofa.``
 
-.. image:: examples/leo/illustrations/scene-001.png
+.. image:: illustrations/scene-001.png
    :alt: Léo retrouve sa petite voiture sous le canapé.
    :width: 80%
    :align: center
@@ -68,7 +68,7 @@ Scène 2
 **Prompt d'illustration :**
    ``<LEO> plays in his bedroom, guiding his <TOY_CAR> across the parquet floor around chair legs and along the edge of a rug.``
 
-.. image:: examples/leo/illustrations/scene-002.png
+.. image:: illustrations/scene-002.png
    :alt: Léo joue avec sa petite voiture dans sa chambre.
    :width: 80%
    :align: center
@@ -84,7 +84,7 @@ Scène 3
 **Prompt d'illustration :**
    ``<LEO> sits in the <LIVING_ROOM> at snack time, eating little cakes with appetite while holding his <TOY_CAR> tightly in one hand.``
 
-.. image:: examples/leo/illustrations/scene-003.png
+.. image:: illustrations/scene-003.png
    :alt: Léo prend son goûter avec sa maman dans le salon.
    :width: 80%
    :align: center
