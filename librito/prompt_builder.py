@@ -297,19 +297,37 @@ def build_concept_artwork_prompt(
         Prompt string for generating the concept artwork.
     """
 
+    if concept.is_environment:
+        resource_filename = "environment_artworks_constraints.txt"
+        configured_constraints = storybook.environment_artworks_constraints.strip()
+        header = "Environment"
+        instructions = (
+            "Generate a clean reference artwork of the environment in the specified style. "
+            "Focus solely on depicting the architecture, landscape, spatial layout, lighting, "
+            "and characteristic atmosphere of the setting clearly for use as a visual anchor."
+        )
+    else:
+        resource_filename = "subject_artworks_constraints.txt"
+        configured_constraints = storybook.subject_artworks_constraints.strip()
+        header = "Subject"
+        instructions = (
+            "Generate a clean reference artwork of the subject on a neutral background in the specified style. "
+            "Focus solely on depicting the visual features and characteristic appearance of the subject "
+            "clearly for use as a visual anchor."
+        )
+
     if constraints is not None and constraints.strip():
         resolved_constraints = constraints.strip()
-    elif storybook.artworks_constraints.strip():
-        resolved_constraints = storybook.artworks_constraints.strip()
+    elif configured_constraints:
+        resolved_constraints = configured_constraints
     else:
-        resolved_constraints = _RESOURCE_DIRECTORY.joinpath("artworks_constraints.txt").read_text(encoding="utf-8").strip()
+        resolved_constraints = _RESOURCE_DIRECTORY.joinpath(resource_filename).read_text(encoding="utf-8").strip()
 
     return (
         f"Style: {storybook.style.strip()}\n\n"
-        f"Subject: {concept.description.strip()}\n\n"
+        f"{header}: {concept.description.strip()}\n\n"
         "Instructions:\n"
-        "Generate a clean reference artwork of the subject on a neutral background in the specified style. "
-        "Focus solely on depicting the visual features and characteristic appearance of the subject clearly for use as a visual anchor.\n\n"
+        f"{instructions}\n\n"
         f"Constraints:\n{resolved_constraints}"
     )
 

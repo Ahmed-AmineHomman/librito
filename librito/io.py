@@ -18,7 +18,11 @@ _STORYBOOK_REQUIRED_TOP_LEVEL_KEYS = {
     "parts",
     "scenes",
 }
-_STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS = {"artworks_constraints"}
+_STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS = {
+    "artworks_constraints",
+    "subject_artworks_constraints",
+    "environment_artworks_constraints",
+}
 _STORYBOOK_TOP_LEVEL_KEYS = _STORYBOOK_REQUIRED_TOP_LEVEL_KEYS | _STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS
 _STORYBOOK_PART_KEYS = {
     "front_cover",
@@ -31,7 +35,9 @@ _STORYBOOK_PART_KEYS = {
     "back_cover",
 }
 _STORYBOOK_SCENE_KEYS = {"label", "text", "prompt", "image_path"}
-_CONCEPT_KEYS = {"tag", "description", "image_path", "scenes"}
+_CONCEPT_REQUIRED_KEYS = {"tag", "description", "image_path", "scenes"}
+_CONCEPT_OPTIONAL_KEYS = {"is_environment"}
+_CONCEPT_KEYS = _CONCEPT_REQUIRED_KEYS | _CONCEPT_OPTIONAL_KEYS
 _PAGE_KEYS = {"text", "illustration"}
 _ILLUSTRATION_KEYS = {"prompt", "image_path", "text_mode"}
 _UNITS_TOP_LEVEL_KEYS = {"units"}
@@ -71,7 +77,7 @@ def load_storybook(path: Path) -> Storybook:
     for position, concept_payload in enumerate(concepts, start=1):
         if not isinstance(concept_payload, dict):
             raise ValueError(f"concept {position} must be an object.")
-        _require_exact_keys(concept_payload, _CONCEPT_KEYS, f"concept {position}")
+        _require_keys(concept_payload, _CONCEPT_REQUIRED_KEYS, _CONCEPT_KEYS, f"concept {position}")
         concept_tag = _require_non_empty_trimmed_string(concept_payload["tag"], f"concept {position}.tag")
         if concept_tag in seen_tags:
             raise ValueError(f"concept tags must be unique, duplicate found: {concept_tag}.")
@@ -79,6 +85,9 @@ def load_storybook(path: Path) -> Storybook:
         concept_scenes = concept_payload["scenes"]
         if not isinstance(concept_scenes, list):
             raise ValueError(f"concept {position}.scenes must be an array.")
+        is_environment = concept_payload.get("is_environment", False)
+        if not isinstance(is_environment, bool):
+            raise ValueError(f"concept {position}.is_environment must be a boolean.")
         parsed_concepts.append(
             Concept(
                 tag=concept_tag,
@@ -88,6 +97,7 @@ def load_storybook(path: Path) -> Storybook:
                     _require_string(scene_label, f"concept {position}.scenes[{index}]")
                     for index, scene_label in enumerate(concept_scenes)
                 ],
+                is_environment=is_environment,
             )
         )
 
@@ -114,13 +124,27 @@ def load_storybook(path: Path) -> Storybook:
             )
         )
 
+    legacy_artworks_constraints = _require_string(
+        payload.get("artworks_constraints", ""),
+        "story.artworks_constraints",
+    )
+    subject_artworks_constraints = _require_string(
+        payload.get("subject_artworks_constraints", legacy_artworks_constraints),
+        "story.subject_artworks_constraints",
+    )
+    environment_artworks_constraints = _require_string(
+        payload.get("environment_artworks_constraints", ""),
+        "story.environment_artworks_constraints",
+    )
+
     return Storybook(
         title=_require_string(payload["title"], "story.title"),
         author=_require_string(payload["author"], "story.author"),
         style=_require_string(payload["style"], "story.style"),
         style_image_path=_require_string(payload["style_image_path"], "story.style_image_path"),
         constraints=_require_string(payload["constraints"], "story.constraints"),
-        artworks_constraints=_require_string(payload.get("artworks_constraints", ""), "story.artworks_constraints"),
+        subject_artworks_constraints=subject_artworks_constraints,
+        environment_artworks_constraints=environment_artworks_constraints,
         concepts=parsed_concepts,
         parts=_parse_book_parts(payload["parts"]),
         scenes=scenes,
@@ -145,13 +169,15 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
             "style": storybook.style,
             "style_image_path": storybook.style_image_path,
             "constraints": storybook.constraints,
-            "artworks_constraints": storybook.artworks_constraints,
+            "subject_artworks_constraints": storybook.subject_artworks_constraints,
+            "environment_artworks_constraints": storybook.environment_artworks_constraints,
             "concepts": [
                 {
                     "tag": concept.tag,
                     "description": concept.description,
                     "image_path": concept.image_path,
                     "scenes": list(concept.scenes),
+                    "is_environment": concept.is_environment,
                 }
                 for concept in storybook.concepts
             ],

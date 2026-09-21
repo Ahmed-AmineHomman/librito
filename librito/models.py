@@ -41,12 +41,16 @@ class Concept:
         directory. Empty until the artwork-generation stage fills it.
     scenes:
         Ordered scene labels where this concept visually appears.
+    is_environment:
+        Whether the concept represents an environment or setting rather than a
+        subject (character, animal, or object).
     """
 
     tag: str
     description: str
     image_path: str = ""
     scenes: list[str] = field(default_factory=list)
+    is_environment: bool = False
 
 
 @dataclass(slots=True)
@@ -138,13 +142,17 @@ class Storybook:
     constraints:
         Optional generation constraints. When empty, the default constraints
         shipped in ``librito/resources/prompt_constraints.txt`` are used.
-    artworks_constraints:
-        Optional concept reference artwork generation constraints. When empty,
+    subject_artworks_constraints:
+        Optional subject reference artwork generation constraints. When empty,
         the default constraints shipped in
-        ``librito/resources/artworks_constraints.txt`` are used.
+        ``librito/resources/subject_artworks_constraints.txt`` are used.
+    environment_artworks_constraints:
+        Optional environment reference artwork generation constraints. When empty,
+        the default constraints shipped in
+        ``librito/resources/environment_artworks_constraints.txt`` are used.
     concepts:
         Ordered list of recurring visual concepts with tags, descriptions,
-        reference artwork paths, and scene mappings.
+        reference artwork paths, scene mappings, and environment flags.
     parts:
         Structured non-scene book parts such as covers and front matter.
     scenes:
@@ -161,7 +169,8 @@ class Storybook:
     parts: BookParts
     scenes: list[StoryScene]
     constraints: str = field(default="")
-    artworks_constraints: str = field(default="")
+    subject_artworks_constraints: str = field(default="")
+    environment_artworks_constraints: str = field(default="")
     style_image_path: str = field(default="")
 
     @property

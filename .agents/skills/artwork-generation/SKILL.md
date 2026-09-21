@@ -56,13 +56,15 @@ Artworks
 
 Concept and style artworks are a **mandatory preliminary step** before scene illustration. The illustration pipeline enforces that all concepts referenced in a scene prompt possess generated reference artworks on disk.
 
-Use the `helpers/illustrate_artworks.py` script to generate concept and style artworks deterministically.
+Use the `helpers/illustrate_artworks.py` script to generate concept and style artworks deterministically. The helper supports separate constraint overrides via `--subject-constraints` and `--environment-constraints`.
 
 Each concept artwork should:
 
 * faithfully represent the concept description,
 * be rendered in the global visual style,
-* focus on the concept itself without scene-specific context,
+* adhere to its concept category:
+  * **subject concepts**: isolated on a clean neutral background using subject constraints,
+  * **environment concepts**: depicting the spatial layout, architectural/natural features, and atmosphere without characters using environment constraints,
 * be suitable as a visual reference for an image generator.
 
 Artworks are stored in the story workspace under the canonical artworks directory (`database/<story>/artworks/`). The storybook artifact records relative paths to each artwork.

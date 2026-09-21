@@ -32,12 +32,13 @@ Workflow
    * characters (appearance, clothing, distinguishing features),
    * important settings (locations, environments),
    * important recurring objects (artifacts, vehicles, tools).
-5. Assign each concept a canonical anchor tag in the strict ``<UPPER_SNAKE>`` format.
-6. Write a stable visual description for each concept that is specific enough to guide consistent illustration across scenes.
-7. Map each concept to the ordered list of scene labels where it appears.
-8. Remove concepts that appear in only one scene; those details belong inline in the scene prompt.
-9. Run the relevant repository validators and consistency checks.
-10. Repair weak or invalid concept state before declaring the work complete.
+5. Classify each concept as a subject (`is_environment: false`) or an environment (`is_environment: true`).
+6. Assign each concept a canonical anchor tag in the strict ``<UPPER_SNAKE>`` format.
+7. Write a stable visual description for each concept that is specific enough to guide consistent illustration across scenes.
+8. Map each concept to the ordered list of scene labels where it appears.
+9. Remove concepts that appear in only one scene; those details belong inline in the scene prompt.
+10. Run the relevant repository validators and consistency checks.
+11. Repair weak or invalid concept state before declaring the work complete.
 
 Anchor Tags
 -----------
@@ -45,6 +46,14 @@ Anchor Tags
 Anchor tags must use the strict format ``<NAME>`` with uppercase letters, digits, and underscores only.
 
 Tags should be short, mnemonic, and stable across revisions. Avoid generic names like ``<CHARACTER>`` when a specific name like ``<CALMIO>`` is available.
+
+Concept Classification
+----------------------
+
+Each concept must be categorized by setting its boolean `is_environment` field:
+
+* **Subject concepts** (`is_environment: false`): characters, animals, vehicles, and objects. Downstream artwork generation renders these as isolated reference images on a neutral background using subject constraints.
+* **Environment concepts** (`is_environment: true`): rooms, houses, landscapes, clearings, and locations. Downstream artwork generation renders these as spatial setting references without characters using environment constraints.
 
 Concept Descriptions
 --------------------
@@ -78,6 +87,7 @@ Before declaring concept definition complete, verify through repository tools an
 
 * the canonical storybook artifact respects the repository schema,
 * every concept has a unique and valid anchor tag,
+* every concept specifies the `is_environment` boolean flag,
 * every concept has a non-empty description,
 * every concept is mapped to at least two scenes,
 * no concept appears in only one scene (inline those instead),
