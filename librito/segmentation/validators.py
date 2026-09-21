@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from librito.models import StoryScene, Storybook
-from librito.prompt_builder import build_render_prompt, resolve_prompt
+from librito.prompt_builder import build_render_prompt, resolve_prompt, resolve_scene_constraints
 
 _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
 _STRICT_ANCHOR_PATTERN = re.compile(r"^<[A-Z0-9_]+>$")
@@ -174,5 +174,11 @@ def resolve_scene_prompt(
     """
 
     if render:
-        return build_render_prompt(storybook, scene, require_artworks=False).text
+        constraints = resolve_scene_constraints(storybook)
+        return build_render_prompt(
+            storybook=storybook,
+            scene=scene,
+            constraints=constraints,
+            require_artworks=False,
+        ).text
     return resolve_prompt(scene.prompt, storybook.concept_map).strip()

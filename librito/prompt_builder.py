@@ -122,9 +122,105 @@ def resolve_prompt(
     return _ANCHOR_PATTERN.sub(replace_anchor, prompt)
 
 
+def load_default_scene_constraints() -> str:
+    """Load default scene illustration constraints from bundled resources.
+
+    Returns
+    -------
+    str
+        Default scene prompt constraints.
+    """
+
+    return _RESOURCE_DIRECTORY.joinpath("prompt_constraints.txt").read_text(encoding="utf-8").strip()
+
+
+def load_default_subject_artworks_constraints() -> str:
+    """Load default subject artwork constraints from bundled resources.
+
+    Returns
+    -------
+    str
+        Default subject artwork constraints.
+    """
+
+    return _RESOURCE_DIRECTORY.joinpath("subject_artworks_constraints.txt").read_text(encoding="utf-8").strip()
+
+
+def load_default_environment_artworks_constraints() -> str:
+    """Load default environment artwork constraints from bundled resources.
+
+    Returns
+    -------
+    str
+        Default environment artwork constraints.
+    """
+
+    return _RESOURCE_DIRECTORY.joinpath("environment_artworks_constraints.txt").read_text(encoding="utf-8").strip()
+
+
+def resolve_scene_constraints(
+        storybook: Storybook,
+        override: str | None = None,
+) -> str:
+    """Resolve effective scene constraints for illustration generation.
+
+    Parameters
+    ----------
+    storybook:
+        Storybook containing story data and optional custom constraints.
+    override:
+        Optional constraints override (e.g. from helper CLI argument).
+
+    Returns
+    -------
+    str
+        Effective non-empty scene constraints.
+    """
+
+    if override is not None and override.strip():
+        return override.strip()
+    if storybook.constraints.strip():
+        return storybook.constraints.strip()
+    return load_default_scene_constraints()
+
+
+def resolve_concept_artwork_constraints(
+        storybook: Storybook,
+        concept: Concept,
+        override: str | None = None,
+) -> str:
+    """Resolve effective constraints for concept reference artwork generation.
+
+    Parameters
+    ----------
+    storybook:
+        Storybook containing story data and optional custom constraints.
+    concept:
+        Concept being illustrated.
+    override:
+        Optional constraints override (e.g. from helper CLI argument).
+
+    Returns
+    -------
+    str
+        Effective non-empty artwork constraints.
+    """
+
+    if override is not None and override.strip():
+        return override.strip()
+    if concept.is_environment:
+        if storybook.environment_artworks_constraints.strip():
+            return storybook.environment_artworks_constraints.strip()
+        return load_default_environment_artworks_constraints()
+    if storybook.subject_artworks_constraints.strip():
+        return storybook.subject_artworks_constraints.strip()
+    return load_default_subject_artworks_constraints()
+
+
 def build_render_prompt(
         storybook: Storybook,
         scene: StoryScene,
+        constraints: str,
         workspace_dir: Path | None = None,
         require_artworks: bool = True,
 ) -> RenderPrompt:
@@ -133,10 +229,11 @@ def build_render_prompt(
     Parameters
     ----------
     storybook:
-        Storybook containing the global style, constraints, and recurring
-        concepts.
+        Storybook containing the global style and recurring concepts.
     scene:
         Scene to render.
+    constraints:
+        Generation constraints to apply to the scene.
     workspace_dir:
         Optional story workspace directory used to validate artwork file
         existence on disk.
@@ -153,6 +250,7 @@ def build_render_prompt(
     return build_render_prompt_from_text(
         storybook=storybook,
         prompt=scene.prompt,
+        constraints=constraints,
         workspace_dir=workspace_dir,
         require_artworks=require_artworks,
     )
@@ -161,6 +259,7 @@ def build_render_prompt(
 def build_render_prompt_from_text(
         storybook: Storybook,
         prompt: str,
+        constraints: str,
         workspace_dir: Path | None = None,
         require_artworks: bool = True,
 ) -> RenderPrompt:
@@ -169,10 +268,11 @@ def build_render_prompt_from_text(
     Parameters
     ----------
     storybook:
-        Storybook containing the global style, constraints, and recurring
-        concepts.
+        Storybook containing the global style and recurring concepts.
     prompt:
         Illustration prompt to resolve and package for generation.
+    constraints:
+        Generation constraints to apply to the prompt.
     workspace_dir:
         Optional story workspace directory used to validate artwork file
         existence on disk.
@@ -254,17 +354,12 @@ def build_render_prompt_from_text(
         )
 
     template = _RESOURCE_DIRECTORY.joinpath("image_prompt_template.txt").read_text(encoding="utf-8")
-    if storybook.constraints:
-        constraints = storybook.constraints.strip()
-    else:
-        constraints = _RESOURCE_DIRECTORY.joinpath("prompt_constraints.txt").read_text(encoding="utf-8").strip()
-
     text = template.format(
         instructions=instructions,
         style=storybook.style.strip(),
         concepts_section=concepts_section,
         scene_prompt=scene_prompt,
-        constraints=constraints,
+        constraints=constraints.strip(),
     ).strip()
 
     return RenderPrompt(
@@ -277,19 +372,18 @@ def build_render_prompt_from_text(
 def build_concept_artwork_prompt(
         storybook: Storybook,
         concept: Concept,
-        constraints: str | None = None,
+        constraints: str,
 ) -> str:
     """Build the prompt to generate a reference artwork for a concept.
 
     Parameters
     ----------
     storybook:
-        Storybook containing the global style and optional artworks constraints.
+        Storybook containing the global style definition.
     concept:
         Concept to illustrate as a reference artwork.
     constraints:
-        Optional constraints overriding both the storybook artworks constraints
-        and the default concept artworks constraints.
+        Generation constraints to apply to the concept reference artwork.
 
     Returns
     -------
@@ -298,8 +392,6 @@ def build_concept_artwork_prompt(
     """
 
     if concept.is_environment:
-        resource_filename = "environment_artworks_constraints.txt"
-        configured_constraints = storybook.environment_artworks_constraints.strip()
         header = "Environment"
         instructions = (
             "Generate a clean reference artwork of the environment in the specified style. "
@@ -307,8 +399,6 @@ def build_concept_artwork_prompt(
             "and characteristic atmosphere of the setting clearly for use as a visual anchor."
         )
     else:
-        resource_filename = "subject_artworks_constraints.txt"
-        configured_constraints = storybook.subject_artworks_constraints.strip()
         header = "Subject"
         instructions = (
             "Generate a clean reference artwork of the subject on a neutral background in the specified style. "
@@ -316,19 +406,12 @@ def build_concept_artwork_prompt(
             "clearly for use as a visual anchor."
         )
 
-    if constraints is not None and constraints.strip():
-        resolved_constraints = constraints.strip()
-    elif configured_constraints:
-        resolved_constraints = configured_constraints
-    else:
-        resolved_constraints = _RESOURCE_DIRECTORY.joinpath(resource_filename).read_text(encoding="utf-8").strip()
-
     return (
         f"Style: {storybook.style.strip()}\n\n"
         f"{header}: {concept.description.strip()}\n\n"
         "Instructions:\n"
         f"{instructions}\n\n"
-        f"Constraints:\n{resolved_constraints}"
+        f"Constraints:\n{constraints.strip()}"
     )
 
 

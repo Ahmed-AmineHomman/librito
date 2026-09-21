@@ -20,7 +20,7 @@ from librito.environment import load_repository_environment
 from librito.io import load_storybook
 from librito.logging import add_logging_arguments, configure_logging
 from librito.models import PageSpec, Storybook
-from librito.prompt_builder import build_render_prompt_from_text, resolve_prompt
+from librito.prompt_builder import build_render_prompt_from_text, resolve_prompt, resolve_scene_constraints
 from librito.providers import build_image_client
 from librito.workspace import StoryWorkspace
 
@@ -222,9 +222,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         style_override=arguments.style,
         constraints_override=arguments.constraints,
     )
+    constraints = resolve_scene_constraints(storybook=effective_storybook)
     render_prompt = build_render_prompt_from_text(
         storybook=effective_storybook,
         prompt=prompt_text,
+        constraints=constraints,
         workspace_dir=workspace.directory,
     )
 

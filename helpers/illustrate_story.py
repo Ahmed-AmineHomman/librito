@@ -18,7 +18,7 @@ from librito.environment import load_repository_environment
 from librito.io import load_storybook, save_storybook
 from librito.logging import add_logging_arguments, configure_logging
 from librito.models import PageSpec, Storybook
-from librito.prompt_builder import build_render_prompt, build_render_prompt_from_text
+from librito.prompt_builder import build_render_prompt, build_render_prompt_from_text, resolve_scene_constraints
 from librito.providers import build_image_client
 from librito.workspace import StoryWorkspace
 
@@ -161,6 +161,12 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
         type=str,
         help="Optional illustrated book-part names to generate.",
     )
+    parser.add_argument(
+        "--constraints",
+        type=str,
+        default=None,
+        help="Optional constraints overriding storybook constraints and default prompt constraints.",
+    )
     return parser.parse_args(argv)
 
 
@@ -216,6 +222,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         total_items,
     )
 
+    scene_constraints = resolve_scene_constraints(
+        storybook=storybook,
+        override=arguments.constraints,
+    )
+
     completed_index = 0
     for selection_position, scene_position in enumerate(selected_scene_positions, start=1):
         scene = storybook.scenes[scene_position - 1]
@@ -239,6 +250,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         render_prompt = build_render_prompt(
             storybook=storybook,
             scene=scene,
+            constraints=scene_constraints,
             workspace_dir=workspace.directory,
         )
         generated_image = client.generate_image(
@@ -284,6 +296,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         render_prompt = build_render_prompt_from_text(
             storybook=storybook,
             prompt=illustration.prompt,
+            constraints=scene_constraints,
             workspace_dir=workspace.directory,
         )
         generated_image = client.generate_image(

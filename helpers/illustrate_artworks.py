@@ -18,7 +18,11 @@ from librito.environment import load_repository_environment
 from librito.io import load_storybook, save_storybook
 from librito.logging import add_logging_arguments, configure_logging
 from librito.models import Concept, Storybook
-from librito.prompt_builder import build_concept_artwork_prompt, build_style_artwork_prompt
+from librito.prompt_builder import (
+    build_concept_artwork_prompt,
+    build_style_artwork_prompt,
+    resolve_concept_artwork_constraints,
+)
 from librito.providers import build_image_client
 from librito.workspace import StoryWorkspace
 
@@ -261,10 +265,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             if concept.is_environment
             else arguments.subject_constraints
         )
+        resolved_constraints = resolve_concept_artwork_constraints(
+            storybook=storybook,
+            concept=concept,
+            override=concept_constraints,
+        )
         prompt = build_concept_artwork_prompt(
             storybook=storybook,
             concept=concept,
-            constraints=concept_constraints,
+            constraints=resolved_constraints,
         )
         generated_image = client.generate_image(prompt)
         output_path.parent.mkdir(parents=True, exist_ok=True)

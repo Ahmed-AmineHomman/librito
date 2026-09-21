@@ -14,14 +14,14 @@ _STORYBOOK_REQUIRED_TOP_LEVEL_KEYS = {
     "style",
     "style_image_path",
     "constraints",
+    "subject_artworks_constraints",
+    "environment_artworks_constraints",
     "concepts",
     "parts",
     "scenes",
 }
 _STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS = {
     "artworks_constraints",
-    "subject_artworks_constraints",
-    "environment_artworks_constraints",
 }
 _STORYBOOK_TOP_LEVEL_KEYS = _STORYBOOK_REQUIRED_TOP_LEVEL_KEYS | _STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS
 _STORYBOOK_PART_KEYS = {
@@ -129,11 +129,13 @@ def load_storybook(path: Path) -> Storybook:
         "story.artworks_constraints",
     )
     subject_artworks_constraints = _require_string(
-        payload.get("subject_artworks_constraints", legacy_artworks_constraints),
+        payload["subject_artworks_constraints"],
         "story.subject_artworks_constraints",
     )
+    if not subject_artworks_constraints and legacy_artworks_constraints:
+        subject_artworks_constraints = legacy_artworks_constraints
     environment_artworks_constraints = _require_string(
-        payload.get("environment_artworks_constraints", ""),
+        payload["environment_artworks_constraints"],
         "story.environment_artworks_constraints",
     )
 
