@@ -8,7 +8,6 @@ Use this skill to define the visual style and generate reference artworks for a 
 This skill defines the creative work of visual grounding:
 
 - choosing or refining one global visual style,
-- generating a style reference artwork,
 - generating one reference artwork per recurring concept,
 - ensuring artworks faithfully represent their concept descriptions in the chosen style.
 
@@ -30,14 +29,13 @@ Workflow
 2. Inspect any existing style definition and artworks.
 3. Determine whether the style and artworks should be created, kept, or revised.
 4. Define or refine one global visual style that can apply coherently across the whole story.
-5. Generate a style reference artwork that embodies the chosen visual direction.
-6. For each concept, generate a reference artwork that represents it faithfully in the chosen style.
-7. Store artworks in the canonical artworks directory of the story workspace.
-8. Record artwork paths in the storybook artifact (concept image paths and style image path).
-9. Review generated artworks for visual quality and consistency with descriptions.
-10. Regenerate or refine artworks that do not meet quality expectations.
-11. Run the relevant repository validators and consistency checks.
-12. Repair weak or invalid artwork state before declaring the work complete.
+5. For each concept, generate a reference artwork that represents it faithfully in the chosen style.
+6. Store artworks in the canonical artworks directory of the story workspace.
+7. Record artwork paths in the storybook artifact (concept image paths).
+8. Review generated artworks for visual quality and consistency with descriptions.
+9. Regenerate or refine artworks that do not meet quality expectations.
+10. Run the relevant repository validators and consistency checks.
+11. Repair weak or invalid artwork state before declaring the work complete.
 
 Style
 -----
@@ -49,14 +47,12 @@ The global style should define a coherent visual direction for the whole story.
 - Do not use style to encode scene-specific actions or story events.
 - Prefer one strong visual direction over a vague list of aesthetics.
 
-The style reference artwork should visually embody the chosen direction so that it can serve as a concrete example during downstream generation.
-
 Artworks
 --------
 
-Concept and style artworks are a **mandatory preliminary step** before scene illustration. The illustration pipeline enforces that all concepts referenced in a scene prompt possess generated reference artworks on disk.
+Concept artworks are a **mandatory preliminary step** before scene illustration. The illustration pipeline enforces that all concepts referenced in a scene prompt possess generated reference artworks on disk.
 
-Use the `helpers/illustrate_artworks.py` script to generate concept and style artworks deterministically. The helper supports separate constraint overrides via `--subject-constraints` and `--environment-constraints`.
+Use the `helpers/illustrate_artworks.py` script to generate concept artworks deterministically. The helper supports separate constraint overrides via `--subject-constraints` and `--environment-constraints`.
 
 Each concept artwork should:
 
@@ -76,7 +72,6 @@ Before declaring artwork generation complete, verify through repository tools an
 
 * the canonical storybook artifact respects the repository schema,
 * the global style is defined and non-empty,
-* a style reference artwork exists at the recorded path,
 * every concept has a reference artwork at its recorded path,
 * artwork paths are valid relative paths within the story workspace,
 * the visual style is coherent across the generated artworks.

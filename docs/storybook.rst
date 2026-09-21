@@ -20,7 +20,6 @@ Pour garantir que l'ensemble des illustrations du livre présente une atmosphèr
 
 * **Description du style** : Un paragraphe décrivant la technique graphique (aquarelle, linogravure, gouache, dessin au pastel, etc.), la palette de couleurs, le traitement de la lumière et l'ambiance générale.
 * **Contraintes** : Des consignes spécifiques éventuelles pour orienter ou restreindre certains aspects visuels (par exemple l'absence de texte incrusté ou la simplification des arrière-plans).
-* **Artwork de style** : Une image de référence illustrant le style choisi peut être associée au storybook afin de guider les étapes de génération visuelle.
 
 Concepts récurrents
 -------------------

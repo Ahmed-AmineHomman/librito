@@ -65,12 +65,6 @@ Nous optons pour une douceur intemporelle : l'aquarelle jeunesse, baignée de lu
 
     *Children's watercolor storybook illustration, soft expressive brushwork, warm natural light, gentle pastel colors, cozy home interiors, and charming storybook aesthetics.*
 
-Cette intention visuelle prend corps avec notre image de référence :
-
-.. image:: artworks/style-reference.png
-   :alt: Référence du style aquarelle
-   :width: 70%
-   :align: center
 
 Les sujets
 ^^^^^^^^^^
@@ -236,7 +230,7 @@ Le livre se referme sur une atmosphère paisible, illuminée par le soleil décl
 
 **Prompt de quatrième de couverture :**
 
-    A peaceful and sun-drenched family living room with afternoon light streaming through sheer curtains, illuminating an inviting sofa with plush cushions, a warm polished wooden floor, house plants on shelves, and a gentle tranquil home ambiance. In the upper left of the image, the teaser text is clearly and beautifully written in storybook lettering: "Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée."
+    A peaceful and sun-drenched view of the <LIVING_ROOM>, with afternoon light streaming through the sheer curtains, illuminating the sofa and warm wooden floor, with house plants on shelves and a gentle tranquil home ambiance. Resting on the floor near the sofa is the <TOY_CAR>. In the upper left of the image, the teaser text is clearly and beautifully written in storybook lettering: \"Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée.
 
 .. image:: illustrations/back-cover.png
    :alt: Quatrième de couverture

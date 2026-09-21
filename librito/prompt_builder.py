@@ -413,29 +413,3 @@ def build_concept_artwork_prompt(
         f"{instructions}\n\n"
         f"Constraints:\n{constraints.strip()}"
     )
-
-
-def build_style_artwork_prompt(
-        storybook: Storybook,
-) -> str:
-    """Build the prompt to generate a style reference artwork.
-
-    Parameters
-    ----------
-    storybook:
-        Storybook containing the global style definition.
-
-    Returns
-    -------
-    str
-        Prompt string for generating the style artwork.
-    """
-
-    style_constraints = _RESOURCE_DIRECTORY.joinpath("style_artwork_constraints.txt").read_text(encoding="utf-8").strip()
-    return (
-        f"Style: {storybook.style.strip()}\n\n"
-        "Instructions:\n"
-        "Generate a visual style reference artwork that showcases the artistic medium, textures, color palette, "
-        "brushwork, lighting, and overall aesthetic defined above.\n\n"
-        f"Constraints:\n{style_constraints}"
-    )

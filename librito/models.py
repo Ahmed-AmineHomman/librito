@@ -157,9 +157,6 @@ class Storybook:
         Structured non-scene book parts such as covers and front matter.
     scenes:
         Ordered story scenes to illustrate.
-    style_image_path:
-        Relative path to the style reference artwork within the story
-        directory. Empty until the artwork-generation stage fills it.
     """
 
     title: str
@@ -171,7 +168,6 @@ class Storybook:
     constraints: str = field(default="")
     subject_artworks_constraints: str = field(default="")
     environment_artworks_constraints: str = field(default="")
-    style_image_path: str = field(default="")
 
     @property
     def concept_map(self) -> dict[str, str]:

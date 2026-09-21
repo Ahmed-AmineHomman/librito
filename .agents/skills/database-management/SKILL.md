@@ -35,7 +35,7 @@ Interpret these paths as follows:
 - `units.json`: units artifact
 - `story.epub`: assembled book
 - `illustrations/`: generated scene and book-part illustrations
-- `artworks/`: concept reference artworks and style reference artwork
+- `artworks/`: concept reference artworks
 
 Do not invent alternate filenames for these canonical artifacts.
 
@@ -66,7 +66,7 @@ Treat the naming convention as strict.
 - Do not store the main book outside `story.epub`.
 - Do not place story illustrations outside `illustrations/` unless another tool explicitly requires a temporary
   location.
-- Do not place concept or style artworks outside `artworks/` unless another tool explicitly requires a temporary
+- Do not place concept artworks outside `artworks/` unless another tool explicitly requires a temporary
   location.
 
 Additional files may exist in the story folder, but they must not replace or shadow the canonical artifacts.

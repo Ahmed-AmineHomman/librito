@@ -66,11 +66,11 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
 4. **Génération des artworks de référence**
 
-   Préalable indispensable à l'illustration des scènes, la création des artworks génère les images de référence de chaque concept récurrent ainsi que du style global :
+   Préalable indispensable à l'illustration des scènes, la création des artworks génère les images de référence de chaque concept récurrent :
 
    .. code-block:: bash
 
-      python helpers/illustrate_artworks.py --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview --style
+      python helpers/illustrate_artworks.py --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview
 
    Les images sont enregistrées dans le dossier ``database/mon_histoire/artworks/`` et servent de points d'ancrage visuels pour garantir la continuité graphique.
 

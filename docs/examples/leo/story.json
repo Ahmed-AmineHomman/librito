@@ -2,7 +2,6 @@
   "title": "La petite voiture de Léo",
   "author": "Librito Example",
   "style": "Children's watercolor storybook illustration, soft expressive brushwork, warm natural light, gentle pastel colors, cozy home interiors, and charming storybook aesthetics",
-  "style_image_path": "artworks/style-reference.png",
   "constraints": "",
   "subject_artworks_constraints": "",
   "environment_artworks_constraints": "",
@@ -69,7 +68,7 @@
         "Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée."
       ],
       "illustration": {
-        "prompt": "A peaceful and sun-drenched family living room with afternoon light streaming through sheer curtains, illuminating an inviting sofa with plush cushions, a warm polished wooden floor, house plants on shelves, and a gentle tranquil home ambiance. In the upper left of the image, the teaser text is clearly and beautifully written in storybook lettering: \"Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée.\"",
+        "prompt": "A peaceful and sun-drenched view of the deserted <LIVING_ROOM>, with afternoon light streaming through the sheer curtains, illuminating the sofa and warm wooden floor, with house plants on shelves and a gentle tranquil home ambiance. Resting on the floor near the sofa is the <TOY_CAR>. In the upper left of the image, the teaser text is clearly and beautifully written in storybook lettering: \"Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée.\"",
         "image_path": "illustrations/back-cover.png",
         "text_mode": "embedded"
       }

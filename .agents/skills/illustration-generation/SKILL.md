@@ -5,7 +5,7 @@ description: Generate final illustrations by assembling scene prompts, image anc
 
 Use this skill to generate and refine the final illustrations of a storybook.
 
-This is the **illustrator's job**: given the illustration specs (scene prompts from the prompt-design skill) and the visual references (concept artworks and style artwork from the artwork-generation skill), produce the actual illustrations for every scene and illustrated book part.
+This is the **illustrator's job**: given the illustration specs (scene prompts from the prompt-design skill) and the visual references (concept artworks from the artwork-generation skill), produce the actual illustrations for every scene and illustrated book part.
 
 This skill defines the execution work of illustration:
 
@@ -33,9 +33,8 @@ Workflow
 4. For each target (scene or illustrated book part):
    a. Assemble the render prompt using the prompt-building pipeline (resolve anchors, apply style and constraints).
    b. Collect the relevant concept artworks (image anchors) for concepts present in the scene.
-   c. Collect the style reference artwork.
-   d. Generate the illustration using the assembled prompt and image references.
-   e. Record the generated image path in the storybook artifact.
+   c. Generate the illustration using the assembled prompt and image references.
+   d. Record the generated image path in the storybook artifact.
 5. After generating all illustrations, review them for:
    * visual quality and clarity,
    * faithfulness to the scene prompts,

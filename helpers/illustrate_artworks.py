@@ -1,4 +1,4 @@
-"""Generate concept and style reference artworks for a storybook."""
+"""Generate concept reference artworks for a storybook."""
 
 from __future__ import annotations
 
@@ -20,15 +20,12 @@ from librito.logging import add_logging_arguments, configure_logging
 from librito.models import Concept, Storybook
 from librito.prompt_builder import (
     build_concept_artwork_prompt,
-    build_style_artwork_prompt,
     resolve_concept_artwork_constraints,
 )
 from librito.providers import build_image_client
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
-
-STYLE_ARTWORK_FILENAME = "style-reference.png"
 
 
 def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
@@ -48,11 +45,11 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description=dedent(
             """
-            Generate concept and style reference artworks for a storybook.
+            Generate concept reference artworks for a storybook.
 
             Artworks are a mandatory preliminary step before scene illustration.
             They provide concrete visual references (image anchors) for recurring
-            concepts and the global artistic style.
+            concepts.
 
             By default, this script generates reference artworks for all concepts
             defined in story.json and saves them under database/<story>/artworks/.
@@ -64,7 +61,6 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
               python helpers/illustrate_artworks.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
               python helpers/illustrate_artworks.py --story leo --provider mock --model mock
               python helpers/illustrate_artworks.py --story leo --provider mock --model mock --concepts "<LEO>" "<TOY_CAR>"
-              python helpers/illustrate_artworks.py --story leo --provider mock --model mock --style
             """
         ).strip(),
         formatter_class=RawDescriptionHelpFormatter,
@@ -108,11 +104,6 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
         nargs="+",
         type=str,
         help="Optional concept tags to generate (e.g. '<LEO>' or 'LEO').",
-    )
-    parser.add_argument(
-        "--style",
-        action="store_true",
-        help="Also generate the global style reference artwork.",
     )
     parser.add_argument(
         "--subject-constraints",
@@ -227,7 +218,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         image_size=arguments.resolution,
     )
 
-    total_items = len(target_concepts) + (1 if arguments.style else 0)
+    total_items = len(target_concepts)
     logger.info(
         "Starting generation for story '%s' with %d artwork(s).",
         workspace.story,
@@ -289,41 +280,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             concept.tag,
             concept.image_path,
         )
-
-    if arguments.style:
-        completed_index += 1
-        if storybook.style_image_path.strip():
-            output_path = workspace.directory / storybook.style_image_path.strip()
-        else:
-            output_path = artworks_directory / STYLE_ARTWORK_FILENAME
-
-        if not arguments.force and output_path.exists():
-            logger.info(
-                "Item %d/%d: style artwork skipped (already exists at %s).",
-                completed_index,
-                total_items,
-                storybook.style_image_path or output_path.relative_to(workspace.directory).as_posix(),
-            )
-        else:
-            logger.info(
-                "Item %d/%d: generating style reference artwork...",
-                completed_index,
-                total_items,
-            )
-            prompt = build_style_artwork_prompt(storybook)
-            generated_image = client.generate_image(prompt)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            generated_image.save(output_path)
-
-            storybook.style_image_path = output_path.relative_to(workspace.directory).as_posix()
-            save_storybook(storybook, story_path)
-
-            logger.info(
-                "Item %d/%d: style reference artwork saved to %s.",
-                completed_index,
-                total_items,
-                storybook.style_image_path,
-            )
 
     logger.info("Artwork generation complete.")
     logger.info("Done.")

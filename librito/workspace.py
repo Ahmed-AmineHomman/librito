@@ -35,7 +35,7 @@ class StoryWorkspace:
     illustrations_dir:
         Canonical illustration output directory.
     artworks_dir:
-        Canonical artwork output directory for concept and style references.
+        Canonical artwork output directory for concept references.
     """
 
     story: str

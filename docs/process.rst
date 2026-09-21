@@ -30,7 +30,7 @@ Pour qu'un livre illustré soit crédible, les personnages, les animaux, les obj
 Avant de lancer la production des illustrations du livre, l'établissement de la direction artistique et des repères visuels constitue un préalable indispensable :
 
 * **Choix du style global** : Définition d'un univers plastique (par exemple une gouache douce sur papier texturé, des traits vifs au crayon de couleur ou des aplats modernes).
-* **Génération des artworks** : Pour chaque concept récurrent identifié, une illustration de référence isolée (un *artwork*) est générée conformément au style retenu, complétée par une image de référence pour le style global.
+* **Génération des artworks** : Pour chaque concept récurrent identifié, une illustration de référence isolée (un *artwork*) est générée conformément au style retenu.
 * Ces artworks servent d'ancres visuelles enregistrées dans l'espace de travail : ils constituent la référence graphique concrète requise pour aborder l'étape d'illustration.
 
 4. Conception des prompts d'illustration
