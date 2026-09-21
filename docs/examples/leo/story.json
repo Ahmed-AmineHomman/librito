@@ -1,57 +1,104 @@
 {
-    "title": "Léo et sa voiture rouge",
-    "author": "Librito Example",
-    "style": "Children's watercolor storybook illustration, soft brushwork, warm natural light, gentle pastel colors, cozy home interiors, and expressive characters",
-    "constraints": "",
-    "concepts": {
-        "<LEO>": "A 5-year-old boy with fair skin, short black hair, warm brown eyes, and a cheerful round face. He wears a plain white t-shirt and beige pants.",
-        "<TOY_CAR>": "A small bright red toy race car with a smooth shiny body, black wheels, and a thin white stripe on top.",
-        "<LIVING_ROOM>": "A cozy family living room with a soft sofa, warm wooden floor, pale walls, light curtains, and gentle daylight."
+  "title": "La petite voiture de Léo",
+  "author": "Librito Example",
+  "style": "Children's watercolor storybook illustration, soft expressive brushwork, warm natural light, gentle pastel colors, cozy home interiors, and charming storybook aesthetics",
+  "style_image_path": "artworks/style-reference.png",
+  "constraints": "",
+  "subject_artworks_constraints": "",
+  "environment_artworks_constraints": "",
+  "concepts": [
+    {
+      "tag": "<LEO>",
+      "description": "A 5-year-old boy with fair skin, short tousled dark brown hair, bright expressive dark eyes, and a cheerful round face, wearing a plain white crewneck t-shirt and light beige casual trousers.",
+      "image_path": "artworks/leo.png",
+      "scenes": [
+        "scene_01",
+        "scene_02",
+        "scene_03",
+        "scene_04"
+      ],
+      "is_environment": false
     },
-    "parts": {
-        "front_cover": {
-            "text": [],
-            "illustration": {
-                "prompt": "<LEO> smiles while holding his <TOY_CAR> in the warm light of the <LIVING_ROOM>.",
-                "image_path": "",
-                "text_mode": "overlay"
-            }
-        },
-        "front_endpaper": null,
-        "opening_page": null,
-        "frontispiece": null,
-        "title_page": {
-            "text": [],
-            "illustration": null
-        },
-        "closing_facing_page": null,
-        "closing_illustration": null,
-        "back_cover": {
-            "text": [
-                "Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée."
-            ],
-            "illustration": null
-        }
+    {
+      "tag": "<TOY_CAR>",
+      "description": "A small bright red vintage toy race car with a smooth glossy rounded body, small black wheels, and a thin white racing stripe painted along the top. No visible number in the body.",
+      "image_path": "artworks/toy-car.png",
+      "scenes": [
+        "scene_02",
+        "scene_03",
+        "scene_04"
+      ],
+      "is_environment": false
     },
-    "scenes": [
-        {
-            "label": "scene-find-car",
-            "text": "Léo a cinq ans, et son trésor, c'est une petite voiture rouge qu'il ne quitte jamais. Ce matin-là, impossible de la trouver. Il cherche partout, soulève les coussins, regarde derrière les rideaux… jusqu'à ce qu'il l'aperçoive, cachée sous le canapé du salon. Son visage s'illumine quand il la récupère enfin.",
-            "prompt": "<LEO> kneels on the floor of the <LIVING_ROOM>, after searching everywhere, smiling with relief as he pulls his <TOY_CAR> from under the sofa.",
-            "image_path": "illustrations/scene-001.png"
-        },
-        {
-            "label": "scene-bedroom-play",
-            "text": "Tout content, il file dans sa chambre pour jouer. Il fait rouler son bolide sur le parquet, invente des circuits autour des pieds de chaise et le long des bords du tapis. Les heures passent sans qu'il s'en rende compte.",
-            "prompt": "<LEO> plays in his bedroom, guiding his <TOY_CAR> across the parquet floor around chair legs and along the edge of a rug.",
-            "image_path": "illustrations/scene-002.png"
-        },
-        {
-            "label": "scene-snack-time",
-            "text": "Quand la faim se fait sentir, Léo retourne au salon. Sa maman lui a préparé de bons gâteaux pour le goûter. Assis près d'elle, il les dévore avec appétit, sa petite voiture rouge serrée dans la main.",
-            "prompt": "<LEO> sits in the <LIVING_ROOM> at snack time, eating little cakes with appetite while holding his <TOY_CAR> tightly in one hand.",
-            "image_path": "illustrations/scene-003.png"
-        }
-    ]
+    {
+      "tag": "<LIVING_ROOM>",
+      "description": "A cozy, bright family living room with light oak parquet floors, pale cream walls, soft sheer curtains letting in warm daylight, and a large comfortable fabric sofa with soft cushions.",
+      "image_path": "artworks/living-room.png",
+      "scenes": [
+        "scene_01",
+        "scene_02",
+        "scene_04"
+      ],
+      "is_environment": true
+    }
+  ],
+  "parts": {
+    "front_cover": {
+      "text": [],
+      "illustration": {
+        "prompt": "Storybook cover illustration featuring <LEO> happily playing on the floor with his <TOY_CAR> in the warm daylight of the <LIVING_ROOM>. The title \"La petite voiture de Léo\" is beautifully and clearly written in storybook lettering at the top.",
+        "image_path": "illustrations/front-cover.png",
+        "text_mode": "embedded"
+      }
+    },
+    "front_endpaper": null,
+    "opening_page": null,
+    "frontispiece": null,
+    "title_page": {
+      "text": [],
+      "illustration": {
+        "prompt": "A small charming watercolor spot illustration of the <TOY_CAR> centered on a clean light surface with a soft delicate shadow, surrounded by generous empty space.",
+        "image_path": "illustrations/title-page.png",
+        "text_mode": "overlay"
+      }
+    },
+    "closing_facing_page": null,
+    "closing_illustration": null,
+    "back_cover": {
+      "text": [
+        "Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée."
+      ],
+      "illustration": {
+        "prompt": "A peaceful and sun-drenched family living room with afternoon light streaming through sheer curtains, illuminating an inviting sofa with plush cushions, a warm polished wooden floor, house plants on shelves, and a gentle tranquil home ambiance. In the upper left of the image, the teaser text is clearly and beautifully written in storybook lettering: \"Une histoire douce et lumineuse autour d'un petit garçon et de sa voiture rouge préférée.\"",
+        "image_path": "illustrations/back-cover.png",
+        "text_mode": "embedded"
+      }
+    }
+  },
+  "scenes": [
+    {
+      "label": "scene_01",
+      "text": "Ce matin-là, Léo ne trouve plus sa petite voiture rouge. Il la cherche partout : sous son lit, dans son grand coffre à jouets et derrière les rideaux du salon. Mais la petite voiture reste introuvable.",
+      "prompt": "<LEO> searches anxiously around the <LIVING_ROOM>, peeking behind the light sheer curtains with a puzzled and focused expression, looking for his lost toy.",
+      "image_path": "illustrations/scene-001.png"
+    },
+    {
+      "label": "scene_02",
+      "text": "En s'approchant du grand canapé, Léo soulève un gros coussin moelleux. La voilà ! Sa petite voiture rouge est là, bien cachée. Un large sourire illumine son visage.",
+      "prompt": "<LEO> stands by the comfortable sofa in the <LIVING_ROOM>, joyfully lifting a large soft cushion to reveal the <TOY_CAR> hidden underneath, his face beaming with a delighted smile.",
+      "image_path": "illustrations/scene-002.png"
+    },
+    {
+      "label": "scene_03",
+      "text": "Tout joyeux, Léo file dans sa chambre pour jouer. Il fait rouler son bolide sur le parquet, invente des circuits autour des pieds de chaise et trace des virages le long du tapis toute la matinée.",
+      "prompt": "<LEO> happily kneeling on the wooden floor of his bright cozy child bedroom, pushing his <TOY_CAR> along the edge of a colorful play rug around wooden chair legs with pure excitement.",
+      "image_path": "illustrations/scene-003.png"
+    },
+    {
+      "label": "scene_04",
+      "text": "Une délicieuse odeur de gâteaux vient chatouiller son nez. Léo redescend au salon, où sa maman a préparé de bons biscuits dorés. Il les savoure avec bonheur, sa précieuse voiture rouge bien serrée dans la main.",
+      "prompt": "<LEO> sitting happily at a small wooden table in the sunlit <LIVING_ROOM>, holding his beloved <TOY_CAR> firmly in one hand while enjoying freshly baked golden cookies from a ceramic plate, warm maternal presence nearby.",
+      "image_path": "illustrations/scene-004.png"
+    }
+  ]
 }
-
