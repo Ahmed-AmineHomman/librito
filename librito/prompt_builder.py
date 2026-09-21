@@ -277,15 +277,19 @@ def build_render_prompt_from_text(
 def build_concept_artwork_prompt(
         storybook: Storybook,
         concept: Concept,
+        constraints: str | None = None,
 ) -> str:
     """Build the prompt to generate a reference artwork for a concept.
 
     Parameters
     ----------
     storybook:
-        Storybook containing the global style.
+        Storybook containing the global style and optional artworks constraints.
     concept:
         Concept to illustrate as a reference artwork.
+    constraints:
+        Optional constraints overriding both the storybook artworks constraints
+        and the default concept artworks constraints.
 
     Returns
     -------
@@ -293,18 +297,26 @@ def build_concept_artwork_prompt(
         Prompt string for generating the concept artwork.
     """
 
+    if constraints is not None and constraints.strip():
+        resolved_constraints = constraints.strip()
+    elif storybook.artworks_constraints.strip():
+        resolved_constraints = storybook.artworks_constraints.strip()
+    else:
+        resolved_constraints = _RESOURCE_DIRECTORY.joinpath("artworks_constraints.txt").read_text(encoding="utf-8").strip()
+
     return (
         f"Style: {storybook.style.strip()}\n\n"
         f"Subject: {concept.description.strip()}\n\n"
         "Instructions:\n"
         "Generate a clean reference artwork of the subject on a neutral background in the specified style. "
         "Focus solely on depicting the visual features and characteristic appearance of the subject clearly for use as a visual anchor.\n\n"
-        "Constraints:\n"
-        "single centered subject, plain neutral or white background, no extraneous background elements, no text, no captions, no border, no frame"
+        f"Constraints:\n{resolved_constraints}"
     )
 
 
-def build_style_artwork_prompt(storybook: Storybook) -> str:
+def build_style_artwork_prompt(
+        storybook: Storybook,
+) -> str:
     """Build the prompt to generate a style reference artwork.
 
     Parameters
@@ -318,11 +330,11 @@ def build_style_artwork_prompt(storybook: Storybook) -> str:
         Prompt string for generating the style artwork.
     """
 
+    style_constraints = _RESOURCE_DIRECTORY.joinpath("style_artwork_constraints.txt").read_text(encoding="utf-8").strip()
     return (
         f"Style: {storybook.style.strip()}\n\n"
         "Instructions:\n"
         "Generate a visual style reference artwork that showcases the artistic medium, textures, color palette, "
         "brushwork, lighting, and overall aesthetic defined above.\n\n"
-        "Constraints:\n"
-        "no text, no captions, no border, no frame"
+        f"Constraints:\n{style_constraints}"
     )

@@ -138,6 +138,10 @@ class Storybook:
     constraints:
         Optional generation constraints. When empty, the default constraints
         shipped in ``librito/resources/prompt_constraints.txt`` are used.
+    artworks_constraints:
+        Optional concept reference artwork generation constraints. When empty,
+        the default constraints shipped in
+        ``librito/resources/artworks_constraints.txt`` are used.
     concepts:
         Ordered list of recurring visual concepts with tags, descriptions,
         reference artwork paths, and scene mappings.
@@ -157,6 +161,7 @@ class Storybook:
     parts: BookParts
     scenes: list[StoryScene]
     constraints: str = field(default="")
+    artworks_constraints: str = field(default="")
     style_image_path: str = field(default="")
 
     @property

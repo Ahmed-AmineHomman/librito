@@ -8,7 +8,18 @@ from typing import Any
 
 from librito.models import BookParts, Concept, IllustrationSpec, PageSpec, StoryScene, Storybook, Unit, Units
 
-_STORYBOOK_TOP_LEVEL_KEYS = {"title", "author", "style", "style_image_path", "constraints", "concepts", "parts", "scenes"}
+_STORYBOOK_REQUIRED_TOP_LEVEL_KEYS = {
+    "title",
+    "author",
+    "style",
+    "style_image_path",
+    "constraints",
+    "concepts",
+    "parts",
+    "scenes",
+}
+_STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS = {"artworks_constraints"}
+_STORYBOOK_TOP_LEVEL_KEYS = _STORYBOOK_REQUIRED_TOP_LEVEL_KEYS | _STORYBOOK_OPTIONAL_TOP_LEVEL_KEYS
 _STORYBOOK_PART_KEYS = {
     "front_cover",
     "front_endpaper",
@@ -49,7 +60,7 @@ def load_storybook(path: Path) -> Storybook:
     """
 
     payload = _load_json_object(path)
-    _require_exact_keys(payload, _STORYBOOK_TOP_LEVEL_KEYS, "story")
+    _require_keys(payload, _STORYBOOK_REQUIRED_TOP_LEVEL_KEYS, _STORYBOOK_TOP_LEVEL_KEYS, "story")
 
     concepts = payload["concepts"]
     if not isinstance(concepts, list):
@@ -109,6 +120,7 @@ def load_storybook(path: Path) -> Storybook:
         style=_require_string(payload["style"], "story.style"),
         style_image_path=_require_string(payload["style_image_path"], "story.style_image_path"),
         constraints=_require_string(payload["constraints"], "story.constraints"),
+        artworks_constraints=_require_string(payload.get("artworks_constraints", ""), "story.artworks_constraints"),
         concepts=parsed_concepts,
         parts=_parse_book_parts(payload["parts"]),
         scenes=scenes,
@@ -133,6 +145,7 @@ def save_storybook(storybook: Storybook, path: Path) -> None:
             "style": storybook.style,
             "style_image_path": storybook.style_image_path,
             "constraints": storybook.constraints,
+            "artworks_constraints": storybook.artworks_constraints,
             "concepts": [
                 {
                     "tag": concept.tag,
@@ -405,6 +418,44 @@ def _write_json(payload: dict[str, Any], path: Path) -> None:
     serialized = json.dumps(payload, indent=4, ensure_ascii=False)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{serialized}\n", encoding="utf-8")
+
+
+def _require_keys(
+        payload: dict[str, Any],
+        required_keys: set[str],
+        allowed_keys: set[str],
+        context: str,
+) -> None:
+    """Ensure a mapping contains all required keys and no unexpected keys.
+
+    Parameters
+    ----------
+    payload:
+        Mapping to validate.
+    required_keys:
+        Set of keys that must be present.
+    allowed_keys:
+        Set of all permitted keys (including optional keys).
+    context:
+        Human-readable validation context.
+
+    Raises
+    ------
+    ValueError
+        If any required key is missing or any unexpected key is present.
+    """
+
+    actual_keys = set(payload)
+    missing = required_keys - actual_keys
+    if missing:
+        raise ValueError(
+            f"{context} is missing required keys {sorted(missing)!r}."
+        )
+    extra = actual_keys - allowed_keys
+    if extra:
+        raise ValueError(
+            f"{context} contains unexpected keys {sorted(extra)!r}."
+        )
 
 
 def _require_exact_keys(payload: dict[str, Any], expected_keys: set[str], context: str) -> None:

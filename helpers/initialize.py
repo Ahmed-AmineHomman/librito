@@ -121,6 +121,7 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
                 author="",
                 style="",
                 constraints="",
+                artworks_constraints="",
                 concepts=[],
                 parts=BookParts(
                     front_cover=PageSpec(

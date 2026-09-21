@@ -110,6 +110,12 @@ def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
         action="store_true",
         help="Also generate the global style reference artwork.",
     )
+    parser.add_argument(
+        "--constraints",
+        type=str,
+        default=None,
+        help="Optional constraints overriding storybook artworks_constraints and default concept artwork constraints.",
+    )
     return parser.parse_args(argv)
 
 
@@ -247,6 +253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         prompt = build_concept_artwork_prompt(
             storybook=storybook,
             concept=concept,
+            constraints=arguments.constraints,
         )
         generated_image = client.generate_image(prompt)
         output_path.parent.mkdir(parents=True, exist_ok=True)
