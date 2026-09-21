@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from pathlib import Path
+from typing import Protocol, Sequence
 
 from PIL import Image
 
@@ -10,13 +11,19 @@ from PIL import Image
 class ImageClient(Protocol):
     """Protocol for image generation clients."""
 
-    def generate_image(self, prompt: str) -> Image.Image:
-        """Generate a single image from a text prompt.
+    def generate_image(
+            self,
+            prompt: str,
+            images: Sequence[Path | str | Image.Image] = (),
+    ) -> Image.Image:
+        """Generate a single image from a prompt and optional reference images.
 
         Parameters
         ----------
         prompt:
             Fully assembled prompt to send to the image generation backend.
+        images:
+            Optional reference artwork images to guide concept consistency.
 
         Returns
         -------

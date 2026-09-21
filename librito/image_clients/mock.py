@@ -5,6 +5,9 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 
+from pathlib import Path
+from typing import Sequence
+
 from PIL import Image
 
 from librito.image_clients.utils import compute_dimensions
@@ -47,13 +50,19 @@ class MockImageClient:
             self._config.image_size,
         )
 
-    def generate_image(self, prompt: str) -> Image.Image:
+    def generate_image(
+            self,
+            prompt: str,
+            images: Sequence[Path | str | Image.Image] = (),
+    ) -> Image.Image:
         """Generate a random pixel-noise image.
 
         Parameters
         ----------
         prompt:
             Prompt string (ignored; present for interface compatibility).
+        images:
+            Reference images (ignored; present for interface compatibility).
 
         Returns
         -------

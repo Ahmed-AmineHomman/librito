@@ -7,6 +7,8 @@ import json
 import os
 import random
 import time
+from pathlib import Path
+from typing import Sequence
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -170,13 +172,20 @@ class ComfyUIImageClient:
             f"Available: {available}"
         )
 
-    def generate_image(self, prompt: str) -> Image.Image:
+    def generate_image(
+            self,
+            prompt: str,
+            images: Sequence[Path | str | Image.Image] = (),
+    ) -> Image.Image:
         """Generate a single image for a prompt.
 
         Parameters
         ----------
         prompt:
             Fully assembled prompt to send to ComfyUI.
+        images:
+            Optional reference artwork images. Currently not used by the
+            checkpoint workflow; a warning is logged when passed.
 
         Returns
         -------
@@ -188,6 +197,12 @@ class ComfyUIImageClient:
         ComfyUIImageClientError
             If any step of the generation pipeline fails.
         """
+
+        if images:
+            logger.warning(
+                "ComfyUI checkpoint workflow currently does not support reference images; "
+                "proceeding with text-only generation."
+            )
 
         workflow = copy.deepcopy(self._workflow_template)
         workflow[_CKP_SAMPLER_NODE_ID]["inputs"]["seed"] = random.randint(0, 2 ** 31 - 1)

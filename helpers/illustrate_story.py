@@ -236,8 +236,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             scene.label,
         )
 
-        prompt = build_render_prompt(storybook, scene)
-        generated_image = client.generate_image(prompt)
+        render_prompt = build_render_prompt(
+            storybook=storybook,
+            scene=scene,
+            workspace_dir=workspace.directory,
+        )
+        generated_image = client.generate_image(
+            prompt=render_prompt.text,
+            images=render_prompt.image_paths,
+        )
 
         output_path = output_directory / f"scene-{scene_position:03d}.png"
         generated_image.save(output_path)
@@ -274,8 +281,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             PART_DISPLAY_NAMES[selection.name],
         )
 
-        prompt = build_render_prompt_from_text(storybook, illustration.prompt)
-        generated_image = client.generate_image(prompt)
+        render_prompt = build_render_prompt_from_text(
+            storybook=storybook,
+            prompt=illustration.prompt,
+            workspace_dir=workspace.directory,
+        )
+        generated_image = client.generate_image(
+            prompt=render_prompt.text,
+            images=render_prompt.image_paths,
+        )
 
         output_path = output_directory / PART_OUTPUT_NAMES[selection.name]
         generated_image.save(output_path)

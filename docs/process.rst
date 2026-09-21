@@ -27,11 +27,11 @@ Pour qu'un livre illustré soit crédible, les personnages, les animaux, les obj
 3. Définition du style et création des artworks de référence
 ------------------------------------------------------------
 
-Avant de lancer la production des illustrations du livre, il est essentiel d'établir la direction artistique et les repères visuels :
+Avant de lancer la production des illustrations du livre, l'établissement de la direction artistique et des repères visuels constitue un préalable indispensable :
 
 * **Choix du style global** : Définition d'un univers plastique (par exemple une gouache douce sur papier texturé, des traits vifs au crayon de couleur ou des aplats modernes).
-* **Génération des artworks** : Pour chaque concept récurrent identifié, une illustration de référence isolée (un *artwork*) est générée conformément au style retenu.
-* Ces artworks servent d'ancres visuelles : ils constituent la vérité graphique de référence pour l'étape de génération suivante.
+* **Génération des artworks** : Pour chaque concept récurrent identifié, une illustration de référence isolée (un *artwork*) est générée conformément au style retenu, complétée par une image de référence pour le style global.
+* Ces artworks servent d'ancres visuelles enregistrées dans l'espace de travail : ils constituent la référence graphique concrète requise pour aborder l'étape d'illustration.
 
 4. Conception des prompts d'illustration
 ----------------------------------------
@@ -39,17 +39,17 @@ Avant de lancer la production des illustrations du livre, il est essentiel d'ét
 Une fois les concepts définis et leurs artworks créés, chaque scène fait l'objet d'un travail de mise en scène :
 
 * Un *prompt* (description textuelle destinée au modèle d'illustration) est rédigé pour chaque scène et chaque couverture.
-* Plutôt que de réécrire l'apparence des personnages à chaque page, le prompt réutilise simplement leurs balises d'ancrage (comme ``<RENARD>``) et se concentre sur **l'action, l'émotion, le cadrage et l'interaction** avec le décor.
-* Cette approche permet de concentrer l'effort sur la narration visuelle sans risquer de dénaturer les personnages.
+* Le prompt intègre les balises d'ancrage des concepts (comme ``<RENARD>``) et se concentre sur **l'action, l'émotion, le cadrage et l'interaction** avec le décor.
+* Cette approche permet de concentrer l'effort sur la narration visuelle, les balises reliant directement les protagonistes de la scène à leurs références visuelles respectives.
 
 5. Génération des illustrations finales
 ---------------------------------------
 
 C'est à cette étape que les images définitives du livre prennent vie :
 
-* Le système de génération associe le prompt de mise en scène de la scène, la description du style global et les artworks de référence des concepts présents dans l'image.
-* Chaque scène reçoit son illustration en pleine page.
-* Les illustrations de couverture (première de couverture, quatrième de couverture et éléments de garde éventuels) sont produites selon le même principe.
+* Le système associe le prompt de mise en scène, le style global et les artworks de référence des concepts intervenant dans l'image.
+* Les artworks de référence sont fournis au modèle d'image accompagnés d'un inventaire ordonné des concepts de la scène et d'instructions de composition originale, garantissant la fidélité des sujets dans une composition entièrement nouvelle.
+* Chaque scène reçoit son illustration en pleine page, de même que les différentes couvertures et pages intérieures illustrées.
 
 6. Assemblage du livre
 ----------------------

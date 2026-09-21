@@ -1,6 +1,13 @@
-Style: {style}
+Instructions:
+{instructions}
 
-Scene: {scene_prompt}
+Style:
+{style}{concepts_section}
 
-Constraints:
+## Scene
+
+{scene_prompt}
+
+## Constraints
+
 {constraints}

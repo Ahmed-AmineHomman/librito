@@ -64,17 +64,27 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
    Cette étape de structuration et de rédaction des descriptions est conçue pour être menée avec l'aide d'un assistant ou d'un agent d'intelligence artificielle, guidé par les principes méthodologiques de ``librito``.
 
-4. **Génération des illustrations**
+4. **Génération des artworks de référence**
 
-   Une fois le storybook complété et les références visuelles établies, lancez la génération des illustrations pour toutes les scènes et les couvertures :
+   Préalable indispensable à l'illustration des scènes, la création des artworks génère les images de référence de chaque concept récurrent ainsi que du style global :
 
    .. code-block:: bash
 
-      python helpers/illustrate_story.py --story mon_histoire
+      python helpers/illustrate_artworks.py --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview --style
+
+   Les images sont enregistrées dans le dossier ``database/mon_histoire/artworks/`` et servent de points d'ancrage visuels pour garantir la continuité graphique.
+
+5. **Génération des illustrations**
+
+   Une fois les artworks de référence créés, lancez la génération des illustrations pour toutes les scènes et les couvertures :
+
+   .. code-block:: bash
+
+      python helpers/illustrate_story.py --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview
 
    Les images générées sont automatiquement enregistrées dans le dossier ``database/mon_histoire/illustrations/``.
 
-5. **Assemblage du livre**
+6. **Assemblage du livre**
 
    Rassemblez les textes, la mise en page et les illustrations au sein d'un livre électronique au format EPUB :
 
@@ -82,6 +92,6 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
       python helpers/assemble_book.py --story mon_histoire
 
-6. **Lecture du résultat**
+7. **Lecture du résultat**
 
    Le livre final est généré sous le nom ``database/mon_histoire/story.epub``. Vous pouvez l'ouvrir avec n'importe quelle liseuse compatible EPUB (comme Foliate, Apple Books ou Calibre).

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+from typing import Sequence
 
 from PIL import Image
 from google import genai
@@ -62,13 +64,19 @@ class GeminiImageClient:
         except Exception as error:
             raise GeminiImageClientError(f"Failed to initialize Google GenAI SDK client: {error}.") from error
 
-    def generate_image(self, prompt: str) -> Image.Image:
-        """Generate a single image for a prompt.
+    def generate_image(
+            self,
+            prompt: str,
+            images: Sequence[Path | str | Image.Image] = (),
+    ) -> Image.Image:
+        """Generate a single image for a prompt with optional reference images.
 
         Parameters
         ----------
         prompt:
             Fully assembled prompt to send to Gemini.
+        images:
+            Optional reference artwork images corresponding to concepts.
 
         Returns
         -------
@@ -89,10 +97,24 @@ class GeminiImageClient:
             ),
         )
 
+        loaded_images: list[Image.Image] = []
+        for item in images:
+            if isinstance(item, Image.Image):
+                loaded_images.append(item)
+            else:
+                try:
+                    loaded_images.append(Image.open(item).convert("RGB"))
+                except Exception as error:
+                    raise GeminiImageClientError(
+                        f"Failed to load reference artwork from {item}: {error}."
+                    ) from error
+
+        contents: list[object] = [*loaded_images, prompt]
+
         try:
             response = self._sdk_client.models.generate_content(
                 model=self._model,
-                contents=[prompt],
+                contents=contents,
                 config=request_config,
             )
         except Exception as error:

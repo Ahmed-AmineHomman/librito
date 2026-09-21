@@ -222,8 +222,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         style_override=arguments.style,
         constraints_override=arguments.constraints,
     )
-    resolved_prompt = resolve_prompt(prompt_text, effective_storybook.concept_map).strip()
-    render_prompt = build_render_prompt_from_text(effective_storybook, prompt_text)
+    render_prompt = build_render_prompt_from_text(
+        storybook=effective_storybook,
+        prompt=prompt_text,
+        workspace_dir=workspace.directory,
+    )
 
     output_directory = workspace.directory / TRIALS_DIRECTORY_NAME
     output_name = resolve_output_name(
@@ -236,8 +239,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.info("Output path: %s", output_path)
     logger.info("Prompt source: %s", "override" if arguments.prompt is not None else "storybook")
     logger.info("Raw prompt: %s", prompt_text)
-    logger.info("Resolved prompt: %s", resolved_prompt)
-    logger.info("Final render prompt:\n%s", render_prompt)
+    if render_prompt.image_paths:
+        logger.info("Reference artworks (%d):", len(render_prompt.image_paths))
+        for img_path in render_prompt.image_paths:
+            logger.info("  - %s", img_path)
+    else:
+        logger.info("Reference artworks: none")
+    logger.info("Final render prompt:\n%s", render_prompt.text)
 
     if arguments.dry_run:
         logger.info("Dry run enabled; skipping image generation and file creation.")
@@ -251,7 +259,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         aspect_ratio=arguments.aspect_ratio,
         image_size=arguments.resolution,
     )
-    generated_image = client.generate_image(render_prompt)
+    generated_image = client.generate_image(
+        prompt=render_prompt.text,
+        images=render_prompt.image_paths,
+    )
     generated_image.save(output_path)
 
     logger.info("Trial illustration saved to %s.", output_path)

@@ -54,6 +54,10 @@ The style reference artwork should visually embody the chosen direction so that 
 Artworks
 --------
 
+Concept and style artworks are a **mandatory preliminary step** before scene illustration. The illustration pipeline enforces that all concepts referenced in a scene prompt possess generated reference artworks on disk.
+
+Use the `helpers/illustrate_artworks.py` script to generate concept and style artworks deterministically.
+
 Each concept artwork should:
 
 * faithfully represent the concept description,
@@ -61,7 +65,7 @@ Each concept artwork should:
 * focus on the concept itself without scene-specific context,
 * be suitable as a visual reference for an image generator.
 
-Artworks are stored in the story workspace under the canonical artworks directory. The storybook artifact records relative paths to each artwork.
+Artworks are stored in the story workspace under the canonical artworks directory (`database/<story>/artworks/`). The storybook artifact records relative paths to each artwork.
 
 Output Validation Rules
 -----------------------

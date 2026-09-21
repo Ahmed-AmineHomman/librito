@@ -174,5 +174,5 @@ def resolve_scene_prompt(
     """
 
     if render:
-        return build_render_prompt(storybook, scene)
+        return build_render_prompt(storybook, scene, require_artworks=False).text
     return resolve_prompt(scene.prompt, storybook.concept_map).strip()
