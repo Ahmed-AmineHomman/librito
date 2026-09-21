@@ -1,3 +1,4 @@
 furo
 pytest
 sphinx
+sphinx-design

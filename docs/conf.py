@@ -22,7 +22,9 @@ project = project_metadata["name"]
 author = project_metadata["authors"][0]["name"]
 copyright = match.group("notice")
 
-extensions = []
+extensions = [
+    "sphinx_design",
+]
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
