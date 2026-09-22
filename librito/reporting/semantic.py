@@ -1,100 +1,18 @@
-"""Analyse the semantic consistency of a segmented storybook."""
+"""Semantic consistency analysis for storybooks."""
 
 from __future__ import annotations
 
 import math
 import statistics
-import sys
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from pathlib import Path
-from textwrap import dedent
 from typing import Sequence
 
 import logging
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
-from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook, load_units
 from librito.providers import build_embedding_client
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
-
-
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments."""
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Check how well storybook scenes align with units.
-
-            Use this after segmentation when you want a semantic sanity check
-            between ``story.json`` scenes and ``units.json``. The script always
-            computes global scores across the full story, then optionally expands
-            selected scenes for closer inspection.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Detail modes:
-              summary   Global score summary only.
-              selected  Global summary plus the scenes listed with --scenes.
-              all       Global summary plus every scene.
-
-            Typical use:
-              1. Run the default summary view to check the story globally.
-              2. If needed, rerun with --details selected --scenes ... to inspect
-                 the scenes that look suspicious.
-
-            Examples:
-              python helpers/check_semantic_consistency.py --story leo --provider mock --model mock
-              python helpers/check_semantic_consistency.py --story leo --provider lms --model text-embedding-3-small --details selected --scenes scene-01 scene-04
-              python helpers/check_semantic_consistency.py --story leo --provider gemini --model text-embedding-004 --details all
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--provider",
-        required=True,
-        choices=["gemini", "lms", "mock"],
-        help="Embedding provider used to compute scene and unit embeddings.",
-    )
-    parser.add_argument(
-        "--model",
-        required=True,
-        help="Embedding model identifier for the selected provider.",
-    )
-    parser.add_argument(
-        "--details",
-        default="summary",
-        choices=["summary", "selected", "all"],
-        help="Report detail level: summary, selected scenes, or all scenes.",
-    )
-    parser.add_argument(
-        "--scenes",
-        action="extend",
-        nargs="+",
-        type=str,
-        help="Scene labels to expand when --details selected is used.",
-    )
-    arguments = parser.parse_args(argv)
-    if arguments.details == "selected" and not arguments.scenes:
-        parser.error("The --scenes option is required when --details selected is used.")
-    if arguments.details != "selected" and arguments.scenes:
-        parser.error("The --scenes option can only be used with --details selected.")
-    return arguments
 
 
 def build_semantic_report(
@@ -232,26 +150,6 @@ def build_semantic_report(
     return "\n".join(lines)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the semantic consistency helper."""
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    logger.info("Starting semantic consistency check for story '%s'.", arguments.story)
-    sys.stdout.write(
-        build_semantic_report(
-            story=arguments.story,
-            provider=arguments.provider,
-            model=arguments.model,
-            details=arguments.details,
-            scenes=arguments.scenes,
-        )
-        + "\n"
-    )
-    return 0
-
-
 def _resolve_scene_labels(
         available_labels: Sequence[str],
         details: str,
@@ -335,7 +233,3 @@ def _shorten(text: str, max_length: int = 96) -> str:
     if len(collapsed) <= max_length:
         return collapsed
     return f"{collapsed[: max_length - 3]}..."
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

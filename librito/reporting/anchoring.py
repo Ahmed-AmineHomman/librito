@@ -1,21 +1,12 @@
-"""Check anchor usage consistency in a segmented storybook."""
+"""Anchoring consistency analysis for storybooks."""
 
 from __future__ import annotations
 
 import re
-import sys
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from pathlib import Path
-from textwrap import dedent
 from typing import Sequence
 
 import logging
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
-from librito.logging import add_logging_arguments, configure_logging
 from librito.io import load_storybook
 from librito.models import Storybook
 from librito.segmentation.validators import check_prompt_consistency
@@ -23,84 +14,6 @@ from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
 _ANCHOR_PATTERN = re.compile(r"<[A-Z0-9_]+>")
-
-
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    Namespace
-        Parsed command-line arguments.
-    """
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Check whether concept anchors are used consistently.
-
-            Use this after segmentation to validate the relationship between
-            ``concepts`` and the anchor tags referenced inside scene
-            prompts. The script always checks the full storybook, then optionally
-            expands selected anchors for closer inspection.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Checks performed:
-              - undefined anchors used in prompts
-              - defined concepts that are never used
-              - defined concepts used in only one scene
-
-            Detail modes:
-              summary   Global counts and pass/fail checks only.
-              selected  Global summary plus the anchors listed with --anchors.
-              all       Global summary plus every anchor.
-
-            Typical use:
-              1. Run the default summary view after editing anchors or prompts.
-              2. If needed, rerun with --details selected --anchors ... to inspect
-                 the anchors involved in a failure.
-
-            Examples:
-              python helpers/check_anchoring_consistency.py --story leo
-              python helpers/check_anchoring_consistency.py --story leo --details selected --anchors "<LEO>" "<TOY_CAR>"
-              python helpers/check_anchoring_consistency.py --story leo --details all
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--details",
-        default="summary",
-        choices=["summary", "selected", "all"],
-        help="Report detail level: summary, selected anchors, or all anchors.",
-    )
-    parser.add_argument(
-        "--anchors",
-        action="extend",
-        nargs="+",
-        type=str,
-        help="Anchor tags to expand when --details selected is used.",
-    )
-    arguments = parser.parse_args(argv)
-    if arguments.details == "selected" and not arguments.anchors:
-        parser.error("The --anchors option is required when --details selected is used.")
-    if arguments.details != "selected" and arguments.anchors:
-        parser.error("The --anchors option can only be used with --details selected.")
-    return arguments
 
 
 def build_anchor_report(
@@ -248,36 +161,6 @@ def _format_check(
     return f"- [ ] {title} ({finding_count})"
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the anchoring consistency helper.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    logger.info("Starting anchoring consistency check for story '%s'.", arguments.story)
-    sys.stdout.write(
-        build_anchor_report(
-            story=arguments.story,
-            details=arguments.details,
-            anchors=arguments.anchors,
-        )
-        + "\n"
-    )
-    logger.info("Anchoring consistency check complete.")
-    return 0
-
-
 def _count_prompt_anchor_occurrences(storybook: Storybook) -> dict[str, dict[str, object]]:
     """Count prompt anchor usage for all anchors found in scene prompts.
 
@@ -411,7 +294,3 @@ def _deduplicate(values: Sequence[str]) -> list[str]:
         seen_values.add(value)
         ordered_values.append(value)
     return ordered_values
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

@@ -1,22 +1,12 @@
-"""Generate concept reference artworks for a storybook."""
+"""Concept reference artwork generation."""
 
 from __future__ import annotations
 
+import logging
 import re
-import sys
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
-from pathlib import Path
-from textwrap import dedent
 from typing import Sequence
 
-import logging
-
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
 from librito.io import load_storybook, save_storybook
-from librito.logging import add_logging_arguments, configure_logging
 from librito.models import Concept, Storybook
 from librito.prompt_builder import (
     build_concept_artwork_prompt,
@@ -26,98 +16,6 @@ from librito.providers import build_image_client
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
-
-
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    Namespace
-        Parsed command-line arguments.
-    """
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Generate concept reference artworks for a storybook.
-
-            Artworks are a mandatory preliminary step before scene illustration.
-            They provide concrete visual references (image anchors) for recurring
-            concepts.
-
-            By default, this script generates reference artworks for all concepts
-            defined in story.json and saves them under database/<story>/artworks/.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Examples:
-              python helpers/illustrate_artworks.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
-              python helpers/illustrate_artworks.py --story leo --provider mock --model mock
-              python helpers/illustrate_artworks.py --story leo --provider mock --model mock --concepts "<LEO>" "<TOY_CAR>"
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--provider",
-        required=True,
-        choices=["gemini", "comfyui", "mock"],
-        help="Image generation provider.",
-    )
-    parser.add_argument(
-        "--model",
-        required=True,
-        help="Image model identifier. For ComfyUI, this is the checkpoint filename.",
-    )
-    parser.add_argument(
-        "--aspect-ratio",
-        default="1:1",
-        help="Requested image aspect ratio.",
-    )
-    parser.add_argument(
-        "--resolution",
-        default="1K",
-        help='Requested image resolution: "0.5K", "1K", or "2K".',
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Regenerate artworks even when an image file already exists.",
-    )
-    parser.add_argument(
-        "--concepts",
-        action="extend",
-        nargs="+",
-        type=str,
-        help="Optional concept tags to generate (e.g. '<LEO>' or 'LEO').",
-    )
-    parser.add_argument(
-        "--subject-constraints",
-        type=str,
-        default=None,
-        help="Optional constraints overriding storybook subject_artworks_constraints and default subject artwork constraints.",
-    )
-    parser.add_argument(
-        "--environment-constraints",
-        type=str,
-        default=None,
-        help="Optional constraints overriding storybook environment_artworks_constraints and default environment artwork constraints.",
-    )
-    return parser.parse_args(argv)
 
 
 def slugify_tag(tag: str) -> str:
@@ -179,24 +77,19 @@ def resolve_target_concepts(
     return [concept_map[tag] for tag in sorted(normalized_requested) if tag in concept_map]
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the artwork generation entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    workspace = StoryWorkspace.from_story(arguments.story)
+def generate_artworks(
+    story: str,
+    provider: str,
+    model: str,
+    aspect_ratio: str = "1:1",
+    resolution: str = "1K",
+    force: bool = False,
+    concepts: Sequence[str] | None = None,
+    subject_constraints: str | None = None,
+    environment_constraints: str | None = None,
+) -> None:
+    """Generate concept reference artworks for a storybook."""
+    workspace = StoryWorkspace.from_story(story)
 
     logger.info("Starting artwork generation for story '%s'.", workspace.story)
     story_path = workspace.require_storybook_file()
@@ -205,17 +98,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     target_concepts = resolve_target_concepts(
         storybook=storybook,
-        requested_tags=arguments.concepts,
+        requested_tags=concepts,
     )
 
     artworks_directory = workspace.artworks_dir
     artworks_directory.mkdir(parents=True, exist_ok=True)
 
     client = build_image_client(
-        provider=arguments.provider,
-        model=arguments.model,
-        aspect_ratio=arguments.aspect_ratio,
-        image_size=arguments.resolution,
+        provider=provider,
+        model=model,
+        aspect_ratio=aspect_ratio,
+        image_size=resolution,
     )
 
     total_items = len(target_concepts)
@@ -234,7 +127,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             slug = slugify_tag(concept.tag)
             output_path = artworks_directory / f"{slug}.png"
 
-        if not arguments.force and output_path.exists():
+        if not force and output_path.exists():
             logger.info(
                 "Item %d/%d: concept %s skipped (artwork already exists at %s).",
                 completed_index,
@@ -252,9 +145,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         concept_constraints = (
-            arguments.environment_constraints
+            environment_constraints
             if concept.is_environment
-            else arguments.subject_constraints
+            else subject_constraints
         )
         resolved_constraints = resolve_concept_artwork_constraints(
             storybook=storybook,
@@ -282,9 +175,3 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     logger.info("Artwork generation complete.")
-    logger.info("Done.")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

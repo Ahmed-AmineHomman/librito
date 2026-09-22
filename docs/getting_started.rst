@@ -46,11 +46,11 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
 1. **Initialisation de l'espace de travail**
 
-   Chaque histoire est gérée dans un répertoire dédié sous ``database/``. Vous pouvez initialiser une nouvelle histoire avec le script d'initialisation :
+   Chaque histoire est gérée dans un répertoire dédié sous ``database/``. Vous pouvez initialiser une nouvelle histoire avec la commande ``init`` :
 
    .. code-block:: bash
 
-      python helpers/initialize.py mon_histoire
+      python librito.py init --story mon_histoire --filepath story.md
 
    Cette commande crée le dossier ``database/mon_histoire/`` avec les sous-répertoires requis.
 
@@ -70,7 +70,7 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
    .. code-block:: bash
 
-      python helpers/illustrate_artworks.py --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview
+      python librito.py illustrate artworks --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview
 
    Les images sont enregistrées dans le dossier ``database/mon_histoire/artworks/`` et servent de points d'ancrage visuels pour garantir la continuité graphique.
 
@@ -80,7 +80,7 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
    .. code-block:: bash
 
-      python helpers/illustrate_story.py --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview
+      python librito.py illustrate scenes --story mon_histoire --provider gemini --model gemini-3.1-flash-image-preview
 
    Les images générées sont automatiquement enregistrées dans le dossier ``database/mon_histoire/illustrations/``.
 
@@ -90,7 +90,7 @@ Voici le déroulement typique pour transformer une histoire brute en un livre il
 
    .. code-block:: bash
 
-      python helpers/assemble_book.py --story mon_histoire
+      python librito.py assemble --story mon_histoire
 
 7. **Lecture du résultat**
 

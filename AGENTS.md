@@ -6,8 +6,8 @@ This repository is an agent-native workspace for transforming stories into struc
 
 - `./.agents/`: skills and agent-oriented guidance;
 - `./database/`: working area for stories and generated artifacts;
-- `./librito/`: reusable source code, schema definitions, workspace structure, etc...;
-- `./helpers/`: deterministic helper scripts;
+- `./librito/`: source code, schema definitions, workspace structure, CLI, and business logic;
+- `./librito.py`: unified CLI entrypoint (run with ``python librito.py <command>``);
 - ` ./docs/`: user-facing documentation.
 
 ### API keys

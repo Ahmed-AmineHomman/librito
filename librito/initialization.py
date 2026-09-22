@@ -1,82 +1,17 @@
-"""Initialize a canonical story workspace under ``database/``."""
+"""Story workspace initialization."""
 
 from __future__ import annotations
 
 import shutil
-import sys
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from pathlib import Path
-from textwrap import dedent
-from typing import Sequence
 
 import logging
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
 from librito.io import save_storybook, save_units
-from librito.logging import add_logging_arguments, configure_logging
 from librito.models import BookParts, IllustrationSpec, PageSpec, Storybook, Units
 from librito.workspace import StoryWorkspace
 
 logger = logging.getLogger(__name__)
-
-
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    Namespace
-        Parsed command-line arguments.
-    """
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Initialize a canonical story workspace from a source story file.
-
-            The initializer creates ``database/<story>/``, copies the source
-            story into the canonical story filename, seeds empty ``story.json``
-            and ``units.json`` artifacts, and creates the ``illustrations/``
-            directory so the agent can start from a known-good workspace.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Behavior:
-              - validates that the story name is available
-              - copies the provided source file into the canonical story path
-              - writes schema-valid empty storybook and units files
-              - creates the illustrations directory
-
-            Examples:
-              python helpers/initialize.py --story absurd_dog --filepath story.md
-              .\\.venv\\Scripts\\python.exe helpers/initialize.py --story absurd_dog --filepath story.md
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--filepath",
-        required=True,
-        type=str,
-        help="Path to the source story file to copy into the workspace.",
-    )
-    return parser.parse_args(argv)
 
 
 def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
@@ -155,32 +90,3 @@ def initialize_story_workspace(story: str, filepath: str) -> StoryWorkspace:
     logger.info("Created illustrations directory at %s.", workspace.illustrations_dir)
     logger.info("Created artworks directory at %s.", workspace.artworks_dir)
     return workspace
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the workspace initialization entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    workspace = initialize_story_workspace(
-        story=arguments.story,
-        filepath=arguments.filepath,
-    )
-    logger.info("Initialization complete for story '%s'.", workspace.story)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

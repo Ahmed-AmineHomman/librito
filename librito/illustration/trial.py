@@ -1,26 +1,16 @@
-"""Generate one trial illustration without mutating the canonical storybook."""
+"""One-off trial illustration generation."""
 
 from __future__ import annotations
 
+import logging
 import re
-import sys
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
-from textwrap import dedent
-from typing import Sequence
 
-import logging
-
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
 from librito.io import load_storybook
-from librito.logging import add_logging_arguments, configure_logging
 from librito.models import PageSpec, Storybook
-from librito.prompt_builder import build_render_prompt_from_text, resolve_prompt, resolve_scene_constraints
+from librito.prompt_builder import build_render_prompt_from_text, resolve_scene_constraints
 from librito.providers import build_image_client
 from librito.workspace import StoryWorkspace
 
@@ -68,178 +58,53 @@ class TargetSelection:
     prompt: str
 
 
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    Namespace
-        Parsed and validated command-line arguments.
-    """
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Generate one trial illustration for a storybook.
-
-            This helper reuses the same prompt-building flow as the canonical
-            illustration pipeline, but writes a standalone PNG into
-            ``database/<story>/trials/`` and never updates ``story.json``.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Target selection:
-              - pass exactly one of --scene or --part
-              - scene targets use the scene label from story.json
-              - part targets use illustrated book-part names such as front_cover
-
-            Overrides:
-              - --prompt replaces the selected target prompt before anchor resolution
-              - --style replaces the global storybook style for this run only
-              - --constraints replaces the storybook constraints for this run only
-              - --output-name names the PNG file inside the trials directory
-
-            Examples:
-              python helpers/illustrate_trial.py --story sir_turnip --provider mock --model mock --scene scene-001
-              python helpers/illustrate_trial.py --story sir_turnip --provider mock --model mock --part front_cover --output-name cover-v2
-              python helpers/illustrate_trial.py --story sir_turnip --scene scene-001 --prompt "<TURNIP> under moonlight" --dry-run
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--provider",
-        choices=["gemini", "comfyui", "mock"],
-        help="Image generation provider. Required unless --dry-run is used.",
-    )
-    parser.add_argument(
-        "--model",
-        help="Image model identifier. Required unless --dry-run is used.",
-    )
-    parser.add_argument(
-        "--aspect-ratio",
-        default="1:1",
-        help="Requested image aspect ratio.",
-    )
-    parser.add_argument(
-        "--resolution",
-        default="1K",
-        help='Requested image resolution: "0.5K", "1K", or "2K".',
-    )
-    target_group = parser.add_mutually_exclusive_group(required=True)
-    target_group.add_argument(
-        "--scene",
-        type=str,
-        help="Single scene label to generate.",
-    )
-    target_group.add_argument(
-        "--part",
-        type=str,
-        help="Single illustrated book-part name to generate.",
-    )
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        help="Optional prompt override. Anchors are resolved as usual.",
-    )
-    parser.add_argument(
-        "--style",
-        type=str,
-        help="Optional style override for this run only.",
-    )
-    parser.add_argument(
-        "--constraints",
-        type=str,
-        help="Optional constraints override for this run only.",
-    )
-    parser.add_argument(
-        "--output-name",
-        dest="output_name",
-        type=str,
-        help="Optional PNG basename to use inside the trials directory.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Resolve and log prompts without generating an image file.",
-    )
-    arguments = parser.parse_args(argv)
-
-    if arguments.dry_run:
-        if arguments.provider is None and arguments.model is None:
-            return arguments
-        if arguments.provider is None or arguments.model is None:
-            parser.error("--provider and --model must be provided together when specified.")
-        return arguments
-
-    if arguments.provider is None or arguments.model is None:
-        parser.error("--provider and --model are required unless --dry-run is used.")
-
-    return arguments
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the trial illustration entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    workspace = StoryWorkspace.from_story(arguments.story)
+def generate_trial(
+    story: str,
+    scene: str | None = None,
+    part: str | None = None,
+    provider: str | None = None,
+    model: str | None = None,
+    aspect_ratio: str = "1:1",
+    resolution: str = "1K",
+    prompt: str | None = None,
+    style: str | None = None,
+    constraints: str | None = None,
+    output_name: str | None = None,
+    dry_run: bool = False,
+) -> None:
+    """Generate one trial illustration without mutating the canonical storybook."""
+    workspace = StoryWorkspace.from_story(story)
 
     logger.info("Starting trial illustration workflow for story '%s'.", workspace.story)
     story_path = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", story_path)
     storybook = load_storybook(story_path)
 
-    selection = resolve_target_selection(storybook, scene_label=arguments.scene, part_name=arguments.part)
-    prompt_text = arguments.prompt if arguments.prompt is not None else selection.prompt
+    selection = resolve_target_selection(storybook, scene_label=scene, part_name=part)
+    prompt_text = prompt if prompt is not None else selection.prompt
     effective_storybook = build_effective_storybook(
         storybook=storybook,
-        style_override=arguments.style,
-        constraints_override=arguments.constraints,
+        style_override=style,
+        constraints_override=constraints,
     )
-    constraints = resolve_scene_constraints(storybook=effective_storybook)
+    resolved_constraints = resolve_scene_constraints(storybook=effective_storybook)
     render_prompt = build_render_prompt_from_text(
         storybook=effective_storybook,
         prompt=prompt_text,
-        constraints=constraints,
+        constraints=resolved_constraints,
         workspace_dir=workspace.directory,
     )
 
     output_directory = workspace.directory / TRIALS_DIRECTORY_NAME
-    output_name = resolve_output_name(
-        requested_name=arguments.output_name,
+    resolved_output_name = resolve_output_name(
+        requested_name=output_name,
         target_identifier=selection.identifier,
     )
-    output_path = output_directory / f"{output_name}.png"
+    output_path = output_directory / f"{resolved_output_name}.png"
 
     logger.info("Selected target: %s (%s).", selection.display_name, selection.kind)
     logger.info("Output path: %s", output_path)
-    logger.info("Prompt source: %s", "override" if arguments.prompt is not None else "storybook")
+    logger.info("Prompt source: %s", "override" if prompt is not None else "storybook")
     logger.info("Raw prompt: %s", prompt_text)
     if render_prompt.image_paths:
         logger.info("Reference artworks (%d):", len(render_prompt.image_paths))
@@ -249,17 +114,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.info("Reference artworks: none")
     logger.info("Final render prompt:\n%s", render_prompt.text)
 
-    if arguments.dry_run:
+    if dry_run:
         logger.info("Dry run enabled; skipping image generation and file creation.")
-        logger.info("Done.")
-        return 0
+        return
 
     output_directory.mkdir(parents=True, exist_ok=True)
+    
+    if provider is None or model is None:
+        raise ValueError("Provider and model are required when not running in dry run mode.")
+
     client = build_image_client(
-        provider=arguments.provider,
-        model=arguments.model,
-        aspect_ratio=arguments.aspect_ratio,
-        image_size=arguments.resolution,
+        provider=provider,
+        model=model,
+        aspect_ratio=aspect_ratio,
+        image_size=resolution,
     )
     generated_image = client.generate_image(
         prompt=render_prompt.text,
@@ -268,8 +136,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     generated_image.save(output_path)
 
     logger.info("Trial illustration saved to %s.", output_path)
-    logger.info("Done.")
-    return 0
 
 
 def build_effective_storybook(
@@ -465,7 +331,3 @@ def slugify_name(value: str) -> str:
     if not collapsed_value:
         return "trial"
     return collapsed_value
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

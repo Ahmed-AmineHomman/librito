@@ -52,7 +52,7 @@ Artworks
 
 Concept artworks are a **mandatory preliminary step** before scene illustration. The illustration pipeline enforces that all concepts referenced in a scene prompt possess generated reference artworks on disk.
 
-Use the `helpers/illustrate_artworks.py` script to generate concept artworks deterministically. The helper supports separate constraint overrides via `--subject-constraints` and `--environment-constraints`.
+Use the ``python librito.py illustrate artworks`` command to generate concept artworks deterministically. It supports separate constraint overrides via ``--subject-constraints`` and ``--environment-constraints``.
 
 Each concept artwork should:
 

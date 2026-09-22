@@ -1,11 +1,9 @@
-"""Assemble a fixed-layout EPUB book from storybook pages and illustrations."""
+"""Fixed-layout EPUB book assembly from storybook pages and illustrations."""
 
 from __future__ import annotations
 
-import sys
 import shutil
 import zipfile
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,12 +16,7 @@ import logging
 
 from PIL import Image, ImageColor, ImageDraw, ImageFont, ImageOps
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
 from librito.io import load_storybook
-from librito.logging import add_logging_arguments, configure_logging
 from librito.models import BookParts, PageSpec, Storybook
 from librito.workspace import StoryWorkspace
 
@@ -91,112 +84,26 @@ class RenderedPage:
     nav_label: str | None = None
 
 
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments.
+def assemble_book(
+    story: str,
+    aspect_ratio: str = "1:1",
+    background_color: str = DEFAULT_BACKGROUND_COLOR,
+    text_color: str = DEFAULT_TEXT_COLOR,
+    resolution: str | None = None,
+) -> None:
+    """Assemble a fixed-layout EPUB book from a storybook."""
 
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    Namespace
-        Parsed command-line arguments.
-    """
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Assemble a fixed-layout EPUB book from a storybook.
-
-            The command validates the required book parts, scene material, and
-            referenced illustration files, then renders front matter, scene
-            spreads, optional closing pages, and the back cover.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Behavior:
-              - reads ``database/<story>/story.json``
-              - validates the title, author, book-part assets, scene texts, and generated illustrations
-              - matches the page geometry to the requested aspect ratio
-              - renders front matter, one text page and one image page per scene, optional closing pages, and the back cover
-              - writes the final EPUB to ``database/<story>/story.epub``
-
-            Layout:
-              - front cover: full-page illustration with optional overlaid title and author
-              - front matter: paired spreads with blank filler pages when needed
-              - each scene: exactly 2 pages
-              - closing matter: optional paired spread before the back cover
-              - back cover: teaser page with optional full-page illustration
-
-            Examples:
-              python helpers/assemble_book.py --story sir_turnip
-              python helpers/assemble_book.py --story sir_turnip --aspect-ratio 3:4
-              python helpers/assemble_book.py --story sir_turnip --background-color "#f4efe6"
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--aspect-ratio",
-        default="1:1",
-        help="Requested image aspect ratio.",
-    )
-    parser.add_argument(
-        "--background-color",
-        default=DEFAULT_BACKGROUND_COLOR,
-        help=f"Solid background color for text pages and blank pages (default: {DEFAULT_BACKGROUND_COLOR}).",
-    )
-    parser.add_argument(
-        "--text-color",
-        default=DEFAULT_TEXT_COLOR,
-        help=f"Text color for rendered text overlays and text pages (default: {DEFAULT_TEXT_COLOR}).",
-    )
-    parser.add_argument(
-        "--resolution",
-        choices=["512", "1k", "2k", "1K", "2K"],
-        help="Resolution preset for the generated EPUB images (choices: '512', '1k', '2k').",
-    )
-    return parser.parse_args(argv)
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the book assembly entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    workspace = StoryWorkspace.from_story(arguments.story)
-    configure_page_size(arguments.aspect_ratio, arguments.resolution)
-    background_color = ImageColor.getrgb(arguments.background_color)
-    text_color = ImageColor.getrgb(arguments.text_color)
+    workspace = StoryWorkspace.from_story(story)
+    configure_page_size(aspect_ratio, resolution)
+    bg_color = ImageColor.getrgb(background_color)
+    fg_color = ImageColor.getrgb(text_color)
 
     logger.info("Starting assembly pipeline for story '%s'.", workspace.story)
     logger.info(
         "Using page size %dx%d for aspect ratio %s.",
         PAGE_WIDTH,
         PAGE_HEIGHT,
-        arguments.aspect_ratio,
+        aspect_ratio,
     )
     story_path = workspace.require_storybook_file()
     logger.info("Loading storybook from %s.", story_path)
@@ -225,8 +132,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         pages = build_rendered_pages(
             storybook=storybook,
             workspace=workspace,
-            background_color=background_color,
-            text_color=text_color,
+            background_color=bg_color,
+            text_color=fg_color,
         )
 
         manifest_items = [
@@ -301,7 +208,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logger.info("Wrote book to %s.", output_path)
     logger.info("Done.")
-    return 0
 
 
 def configure_page_size(
@@ -1348,7 +1254,3 @@ def write_epub_archive(staging_root: Path, output_path: Path) -> None:
                 arcname=path.relative_to(staging_root).as_posix(),
                 compress_type=zipfile.ZIP_DEFLATED,
             )
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

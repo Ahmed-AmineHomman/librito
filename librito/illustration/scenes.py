@@ -1,22 +1,12 @@
-"""Generate illustrations for a storybook."""
+"""Scene and book-part illustration generation."""
 
 from __future__ import annotations
 
-import sys
-from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
+import logging
 from dataclasses import dataclass
-from pathlib import Path
-from textwrap import dedent
 from typing import Sequence
 
-import logging
-
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from librito.environment import load_repository_environment
 from librito.io import load_storybook, save_storybook
-from librito.logging import add_logging_arguments, configure_logging
 from librito.models import PageSpec, Storybook
 from librito.prompt_builder import build_render_prompt, build_render_prompt_from_text, resolve_scene_constraints
 from librito.providers import build_image_client
@@ -66,128 +56,19 @@ class IllustratedPartSelection:
     page: PageSpec
 
 
-def load_parameters(argv: Sequence[str] | None = None) -> Namespace:
-    """Parse command-line arguments.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    Namespace
-        Parsed command-line arguments.
-    """
-
-    parser = ArgumentParser(
-        description=dedent(
-            """
-            Generate illustrations for a storybook.
-
-            Use this after segmentation to turn ``story.json`` scene prompts and
-            any configured non-scene page prompts into image files under
-            ``illustrations/``. By default the script skips items whose
-            ``image_path`` already points to an existing file, so runs are
-            resumable.
-            """
-        ).strip(),
-        epilog=dedent(
-            """
-            Behavior:
-              - reads ``database/<story>/story.json``
-              - builds one render prompt per generated scene or book part
-              - writes images to ``database/<story>/illustrations/``
-              - updates each generated ``image_path`` in place
-
-            Selection:
-              - omit both --scenes and --parts to process all scenes and all illustrated book parts
-              - pass --scenes to generate only selected scene labels
-              - pass --parts to generate only selected illustrated book parts
-              - use --force to regenerate items even when the image already exists
-
-            Examples:
-              python helpers/illustrate_story.py --story leo --provider gemini --model gemini-3.1-flash-image-preview
-              python helpers/illustrate_story.py --story leo --provider mock --model mock --scenes scene-01 scene-04
-              python helpers/illustrate_story.py --story leo --provider mock --model mock --parts front_cover back_cover
-            """
-        ).strip(),
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    add_logging_arguments(parser)
-    parser.add_argument(
-        "--story",
-        required=True,
-        type=str,
-        help="Story folder name under ./database/<story>/.",
-    )
-    parser.add_argument(
-        "--provider",
-        required=True,
-        choices=["gemini", "comfyui", "mock"],
-        help="Image generation provider.",
-    )
-    parser.add_argument(
-        "--model",
-        required=True,
-        help="Image model identifier. For ComfyUI, this is the checkpoint filename.",
-    )
-    parser.add_argument(
-        "--aspect-ratio",
-        default="1:1",
-        help="Requested image aspect ratio.",
-    )
-    parser.add_argument(
-        "--resolution",
-        default="1K",
-        help='Requested image resolution: "0.5K", "1K", or "2K".',
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Regenerate images even when an item already points to an existing file.",
-    )
-    parser.add_argument(
-        "--scenes",
-        action="extend",
-        nargs="+",
-        type=str,
-        help="Optional scene labels to generate.",
-    )
-    parser.add_argument(
-        "--parts",
-        action="extend",
-        nargs="+",
-        type=str,
-        help="Optional illustrated book-part names to generate.",
-    )
-    parser.add_argument(
-        "--constraints",
-        type=str,
-        default=None,
-        help="Optional constraints overriding storybook constraints and default prompt constraints.",
-    )
-    return parser.parse_args(argv)
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the illustration generation entrypoint.
-
-    Parameters
-    ----------
-    argv:
-        Optional command-line argument sequence.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-
-    load_repository_environment()
-    arguments = load_parameters(argv)
-    configure_logging(arguments.log_level)
-    workspace = StoryWorkspace.from_story(arguments.story)
+def illustrate_scenes(
+    story: str,
+    provider: str,
+    model: str,
+    aspect_ratio: str = "1:1",
+    resolution: str = "1K",
+    force: bool = False,
+    scenes: Sequence[str] | None = None,
+    parts: Sequence[str] | None = None,
+    constraints: str | None = None,
+) -> None:
+    """Generate illustrations for scenes and book parts."""
+    workspace = StoryWorkspace.from_story(story)
 
     logger.info("Starting illustration pipeline for story '%s'.", workspace.story)
     story_path = workspace.require_storybook_file()
@@ -196,23 +77,23 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     selected_scene_positions = resolve_scene_positions(
         storybook=storybook,
-        requested_labels=arguments.scenes,
-        requested_parts=arguments.parts,
+        requested_labels=scenes,
+        requested_parts=parts,
     )
     selected_parts = resolve_illustrated_parts(
         storybook=storybook,
-        requested_parts=arguments.parts,
-        requested_scenes=arguments.scenes,
+        requested_parts=parts,
+        requested_scenes=scenes,
     )
 
     output_directory = workspace.illustrations_dir
     output_directory.mkdir(parents=True, exist_ok=True)
 
     client = build_image_client(
-        provider=arguments.provider,
-        model=arguments.model,
-        aspect_ratio=arguments.aspect_ratio,
-        image_size=arguments.resolution,
+        provider=provider,
+        model=model,
+        aspect_ratio=aspect_ratio,
+        image_size=resolution,
     )
 
     total_items = len(selected_scene_positions) + len(selected_parts)
@@ -224,14 +105,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     scene_constraints = resolve_scene_constraints(
         storybook=storybook,
-        override=arguments.constraints,
+        override=constraints,
     )
 
     completed_index = 0
     for selection_position, scene_position in enumerate(selected_scene_positions, start=1):
         scene = storybook.scenes[scene_position - 1]
         completed_index = selection_position
-        if not arguments.force and scene.image_path and (workspace.directory / scene.image_path).exists():
+        if not force and scene.image_path and (workspace.directory / scene.image_path).exists():
             logger.info(
                 "Item %d/%d: scene %s skipped (image already exists).",
                 completed_index,
@@ -277,7 +158,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if illustration is None:
             continue
 
-        if not arguments.force and illustration.image_path and (workspace.directory / illustration.image_path).exists():
+        if not force and illustration.image_path and (workspace.directory / illustration.image_path).exists():
             logger.info(
                 "Item %d/%d: %s skipped (image already exists).",
                 completed_index,
@@ -318,8 +199,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     logger.info("Illustration generation complete.")
-    logger.info("Done.")
-    return 0
 
 
 def resolve_scene_positions(
@@ -406,7 +285,3 @@ def deduplicate(values: Sequence[str]) -> list[str]:
         seen_values.add(value)
         ordered_values.append(value)
     return ordered_values
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
