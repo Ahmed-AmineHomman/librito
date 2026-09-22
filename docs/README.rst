@@ -1,3 +1,8 @@
+.. image:: _static/librito.svg
+   :alt: Librito logo
+   :align: center
+   :width: 180px
+
 =======
 Librito
 =======
